@@ -101,7 +101,15 @@ class Handler extends Actor with ActorLogging {
     }
 
     context.become(stream.orElse(onClose))
-    SocketChannelWrapper.register(socket, conn)
+    SocketChannelWrapper.register(socket, context.actorOf(Props(new Actor {
+      override def receive: Actor.Receive = {
+        case Received(data) ⇒
+          conn ! Write(data)
+        case PeerClosed ⇒
+          conn ! ConfirmedClose
+          context.stop(self)
+      }
+    })))
   }
 
   private def waitAuthRequest: Receive = {
