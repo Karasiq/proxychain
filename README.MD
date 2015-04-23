@@ -3,7 +3,7 @@ Proxy-chaining SOCKS4/SOCKS5/HTTPS server
 
 # Configuration
 Configuration through `proxychain.coffee` script:
-```
+```coffeescript
 entry = [
   "socks://localhost:1080" # TOR
 ]
