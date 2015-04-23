@@ -5,7 +5,7 @@ Proxy-chaining SOCKS4/SOCKS5/HTTPS server
 Configuration through `proxychain.coffee` script:
 ```coffeescript
 entry = [
-  "socks://localhost:1080" # TOR
+  "socks://localhost:9050" # TOR
 ]
 
 loadMiddle = () ->
