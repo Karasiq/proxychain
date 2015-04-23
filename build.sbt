@@ -2,7 +2,7 @@ name := "proxychain"
 
 organization := "com.karasiq"
 
-version := "1.2"
+version := "1.3"
 
 scalaVersion := "2.11.6"
 
