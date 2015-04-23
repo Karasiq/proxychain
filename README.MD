@@ -2,9 +2,34 @@
 Proxy-chaining SOCKS4/SOCKS5/HTTPS server
 
 # Configuration
-Configuration stored in file `proxychain.conf`
+Configuration through `proxychain.coffee` script:
+```
+entry = [
+  "socks://localhost:1080" # TOR
+]
 
-Example: 
+loadMiddle = () ->
+  socks = ProxySource.fromURL("http://localhost:36800/proxylist.txt?list=public&protocol=socks&alive=true&latency=1500").map((ip) -> "socks://" + ip)
+  https = ProxySource.fromURL("http://localhost:36800/proxylist.txt?list=public&protocol=https&alive=true&latency=1500")
+  proxies = ChainBuilder.concat(socks, https)
+  print "Loaded #{proxies.length} proxies"
+  proxies
+
+middle = loadMiddle()
+exit = [
+  "http://exit-proxy.com:8080"
+]
+
+isHttp = (address) ->
+  address.getPort() == 80 || address.getPort() == 443
+
+return {
+  connectionIsAllowed: (address) -> isHttp(address) && DefaultFirewall.connectionIsAllowed(address)
+  proxyChainsFor: (address) -> ChainBuilder.chainsFrom(2, entry, ChainBuilder.hops(middle, 3), exit)
+}
+```
+
+Configuration through `proxychain.conf`:
 ```
 proxyChain {
   host = "0.0.0.0" // Listen IP
