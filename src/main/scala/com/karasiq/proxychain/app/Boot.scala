@@ -3,6 +3,7 @@ package com.karasiq.proxychain.app
 import java.net.InetSocketAddress
 
 import akka.actor.{ActorSystem, Props}
+import akka.event.Logging
 import akka.io.Tcp.Bind
 import akka.io.{IO, Tcp}
 import akka.kernel.Bootable
@@ -19,7 +20,8 @@ final class Boot extends Bootable {
     val config: AppConfig = asPath(cfg.getString("script")) match {
       case script if script.isRegularFile ⇒
         actorSystem.log.debug("Using script: {}", script)
-        ScriptEngine.asConfig(script)
+        val scriptEngine = new ScriptEngine(Logging.getLogger(actorSystem, "ScriptEngine"))
+        scriptEngine.asConfig(script)
 
       case _ ⇒
         AppConfig(cfg) // Default

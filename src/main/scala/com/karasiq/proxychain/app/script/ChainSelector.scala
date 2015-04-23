@@ -1,0 +1,19 @@
+package com.karasiq.proxychain.app.script
+
+import com.karasiq.networkutils.proxy.Proxy
+import com.karasiq.proxychain.ProxyChain
+
+/**
+ * Chain scope wrapper
+ * @param proxies Proxy list
+ * @param hops Number of hops
+ */
+private[script] final class ChainSelector(proxies: Seq[Proxy], hops: Int) {
+  def select(): Seq[Proxy] = {
+    ProxyChain.chainFrom(proxies, randomize = true, hops)
+  }
+}
+
+private[script] object ChainSelector {
+  def apply(proxies: AnyRef, hops: Int): ChainSelector = new ChainSelector(Conversions.asProxySeq(proxies), hops)
+}
