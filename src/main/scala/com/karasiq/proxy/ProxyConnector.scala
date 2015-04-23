@@ -77,7 +77,6 @@ class SocksProxyConnector(version: SocksVersion, proxy: Proxy = null) extends Pr
           throw new ProxyException("SOCKS authentication rejected")
       }
 
-
     case m ⇒
       throw new ProxyException(s"SOCKS authentication not supported: $m")
   }

@@ -1,4 +1,5 @@
 .idea
 target
 proxychain.conf
+proxychain.coffee
 *.bat

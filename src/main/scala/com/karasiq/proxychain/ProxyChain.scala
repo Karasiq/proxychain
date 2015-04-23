@@ -26,15 +26,15 @@ object ProxyChain {
     else new ProxyChainImpl(proxies)
   }
 
+  def chainFrom(proxies: Seq[Proxy], randomize: Boolean = false, hops: Int = 0): Seq[Proxy] = {
+    val ordered = if (randomize) Random.shuffle(proxies) else proxies
+    if (hops == 0) ordered else ordered.take(hops)
+  }
+
   private def selectProxies(config: Config): Seq[Proxy] = {
     import scala.collection.JavaConversions._
-
-    val hops: Int = config.getInt("hops")
-    val randomize: Boolean = config.getBoolean("randomize")
     val proxies: IndexedSeq[String] = config.getStringList("proxies").toIndexedSeq
-
-    val ordered = if (randomize) Random.shuffle(proxies) else proxies
-    (if (hops == 0) ordered else ordered.take(hops)).map(proxyFromString)
+    chainFrom(proxies.map(proxyFromString), config.getBoolean("randomize"), config.getInt("hops"))
   }
 
   @throws[IllegalArgumentException]("if invalid config provided")

@@ -18,7 +18,7 @@ import com.karasiq.parsers.http.{HttpConnect, HttpMethod, HttpRequest, HttpRespo
 import com.karasiq.parsers.socks.SocksClient._
 import com.karasiq.parsers.socks.SocksServer._
 import com.karasiq.proxy.ProxyException
-import com.karasiq.proxychain.ProxyChain
+import com.typesafe.config.ConfigFactory
 import org.apache.commons.io.IOUtils
 
 import scala.collection.JavaConversions._
@@ -29,22 +29,17 @@ import scala.util.{Failure, Success, Try}
 /**
  * SOCKS5 connection handler
  */
-class Handler extends Actor with ActorLogging {
+private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging {
   import context.dispatcher
 
-  private val firewall = Firewall(AppConfig().getConfig("proxyChain"))
+  private val firewall: Firewall = cfg.firewall()
 
   private val socket: Promise[SocketChannel] = Promise() // Connection through proxy chain
 
   private def write(connection: ActorRef, bytes: Seq[Byte]) = connection ! Write(ByteString(bytes.toArray))
 
   private def openConnection(address: InetSocketAddress): Future[SocketChannel] = {
-    val cfg = AppConfig().getConfig("proxyChain")
-
-    def loadChain(): ProxyChain = ProxyChain.config(cfg)
-    val maxChains: Int = cfg.getInt("maxTriedChains")
-
-    val chains = Seq.fill(maxChains)(loadChain()).distinct
+    val chains = cfg.proxyChainsFor(address)
     log.debug("Trying connect to {} through chains: {}", address, chains)
 
     val futures = chains.map { chain ⇒
@@ -58,7 +53,7 @@ class Handler extends Actor with ActorLogging {
             IOUtils.closeQuietly(sc)
           }
         case Failure(exc) ⇒
-          if (log.isDebugEnabled) log.error(exc, "Connect through {} to {} failed: {}", chain, address)
+          if (log.isDebugEnabled) log.error(exc, "Connect through {} to {} failed", chain, address)
       }
       future
     }
@@ -132,8 +127,8 @@ class Handler extends Actor with ActorLogging {
     }
   }
 
+  private val droppedHeaders = ConfigFactory.load().getStringList("proxyChain.http.dropHeaders").toSet
   private def cleanHeaders(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
-    val droppedHeaders = AppConfig().getStringList("proxyChain.http.dropHeaders").toSet
     val ch = headers.filterNot(h ⇒ droppedHeaders.contains(h.name))
     log.debug("Headers dropped: {}", headers.diff(ch).mkString(", "))
     ch

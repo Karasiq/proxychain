@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 /**
  * SOCKS5 server
  */
-class Server extends Actor with ActorLogging {
+private[app] final class Server(cfg: AppConfig) extends Actor with ActorLogging {
   import akka.io.Tcp._
 
   def receive = {
@@ -16,7 +16,7 @@ class Server extends Actor with ActorLogging {
       context.stop(self)
 
     case c @ Connected(remote, local) ⇒ // New connection accepted
-      val handler = context.actorOf(Props[Handler])
+      val handler = context.actorOf(Props(classOf[Handler], cfg))
       val connection = sender()
       connection ! Register(handler)
   }
