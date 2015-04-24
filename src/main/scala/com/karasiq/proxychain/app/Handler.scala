@@ -74,7 +74,7 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
     if (!socket.tryFailure(new IllegalStateException("Actor already stopped"))) socket.future.onSuccess {
       case socketChannel ⇒
         log.debug("Closing proxy chain connection: {}", socketChannel)
-        SocketChannelWrapper.unregister(socketChannel)
+        SocketChannelWrapper.unregister(socketChannel).foreach(_ ! PoisonPill)
         IOUtils.closeQuietly(socketChannel)
     }
 
