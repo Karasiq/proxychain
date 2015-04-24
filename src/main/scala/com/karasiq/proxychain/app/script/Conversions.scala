@@ -1,23 +1,17 @@
 package com.karasiq.proxychain.app.script
 
-import javax.script.Invocable
-
 import com.karasiq.networkutils.proxy.Proxy
 import jdk.nashorn.api.scripting.JSObject
 import jdk.nashorn.internal.objects.NativeArray
 
 import scala.collection.GenTraversableOnce
 import scala.collection.JavaConversions._
+import scala.language.dynamics
 
 /**
  * Javascript conversions
  */
 private[script] object Conversions {
-  def asInvocable(engine: AnyRef): Invocable = engine match {
-    case c: Invocable ⇒ c
-    case _ ⇒ throw new IllegalArgumentException("Not invocable")
-  }
-
   def asSeq(v: AnyRef): Seq[AnyRef] = v match {
     case obj: JSObject ⇒
       obj.values().toIndexedSeq
@@ -27,6 +21,9 @@ private[script] object Conversions {
 
     case cs: ChainSelector ⇒
       cs.select()
+
+    case a: Array[_] ⇒
+      a.asInstanceOf[Array[AnyRef]].toIndexedSeq
 
     case c: GenTraversableOnce[_] ⇒
       c.asInstanceOf[GenTraversableOnce[AnyRef]].toIndexedSeq
@@ -42,8 +39,8 @@ private[script] object Conversions {
   }
 
   private def asProxy: PartialFunction[AnyRef, Proxy] = {
-    case p: Proxy ⇒ p
-    case s: String ⇒ Proxy(if (s.contains("://")) s else s"http://$s")
+    case proxy: Proxy ⇒ proxy
+    case str: String ⇒ Proxy(if (str.contains("://")) str else s"http://$str")
   }
 
   def asProxySeq(v: AnyRef): Seq[Proxy] = {

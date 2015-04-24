@@ -19,12 +19,15 @@ private[app] object AppConfig {
   }
 
   def externalConfig(): Config = {
-    val file = asPath(ConfigFactory.load().getString("proxyChain.external"))
-    if (file.isRegularFile) {
-      ConfigFactory.parseFile(file.toFile)
-        .withFallback(ConfigFactory.load())
-    } else {
-      ConfigFactory.load()
+    val default = ConfigFactory.load()
+    asPath(default.getString("proxyChain.external")) match {
+      case file if file.isRegularFile ⇒ // Load from file
+        ConfigFactory.parseFile(file.toFile)
+          .withFallback(default)
+          .resolve()
+
+      case _ ⇒ // Built-in config
+        default
     }
   }
 

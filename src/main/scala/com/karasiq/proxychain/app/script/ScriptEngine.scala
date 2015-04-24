@@ -25,6 +25,7 @@ private[app] final class ScriptEngine(log: LoggingAdapter) {
   @inline
   private def createBindings(): Bindings = {
     val bindings = scriptEngine.createBindings()
+    bindings.put("Conversions", Conversions) // JS conversions util
     bindings.put("ChainBuilder", ChainBuilder) // Chain build util
     bindings.put("DefaultFirewall", AppConfig().firewall()) // Config firewall
     bindings.put("ProxySource", ProxySource) // URL/file loader
@@ -54,17 +55,19 @@ private[app] final class ScriptEngine(log: LoggingAdapter) {
   def asConfig[T](path: T)(implicit toPath: PathProvider[T]): AppConfig = {
     val scope = loadFile(path) // Script scope
     new AppConfig {
-      private val invoker = Conversions.asInvocable(scriptEngine)
+      // Dynamic function invoker
+      private val invoker = Invoker(scriptEngine, scope)
 
       override def firewall(): Firewall = new Firewall {
         override def connectionIsAllowed(address: InetSocketAddress): Boolean = {
-          invoker.invokeMethod(scope, "connectionIsAllowed", address).asInstanceOf[Boolean]
+          invoker.connectionIsAllowed(address)
         }
       }
 
       override def proxyChainsFor(address: InetSocketAddress): Seq[ProxyChain] = {
-        Conversions.asSeq(invoker.invokeMethod(scope, "proxyChainsFor", address))
-          .map(chain ⇒ ProxyChain(Conversions.asProxySeq(chain):_*))
+        Conversions.asSeq(invoker.proxyChainsFor(address)).collect {
+          case pc: ProxyChain ⇒ pc
+        }
       }
     }
   }
