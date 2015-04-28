@@ -11,8 +11,8 @@ entry = [
 loadMiddle = () ->
   socks = ProxySource.fromURL("http://localhost:36800/proxylist.txt?list=public&protocol=socks&alive=true&latency=1500").map((ip) -> "socks://" + ip)
   https = ProxySource.fromURL("http://localhost:36800/proxylist.txt?list=public&protocol=https&alive=true&latency=1500")
-  proxies = ChainBuilder.concat(socks, https)
-  print "Loaded #{proxies.length} proxies"
+  proxies = socks.concat(http)
+  Logger.info("Loaded {} proxies", proxies.length)
   proxies
 
 middle = loadMiddle()
