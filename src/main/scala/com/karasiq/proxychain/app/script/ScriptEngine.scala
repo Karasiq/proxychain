@@ -65,8 +65,9 @@ private[app] final class ScriptEngine(log: LoggingAdapter) {
       }
 
       override def proxyChainsFor(address: InetSocketAddress): Seq[ProxyChain] = {
-        Conversions.asSeq(invoker.proxyChainsFor(address)).collect {
-          case pc: ProxyChain ⇒ pc
+        invoker.proxyChainsFor(address) match {
+          case Conversions.ScalaSeq(chains @ _*) ⇒
+            chains.collect { case pc: ProxyChain ⇒ pc }
         }
       }
     }
