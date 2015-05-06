@@ -138,6 +138,8 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
     val connection = sender()
     val proxyChannel = openConnection(address)
     val ctx = context // context is null if calling from Future
+
+    connection ! SuspendReading
     proxyChannel.onComplete {
       case f @ Failure(e) ⇒
         onComplete(f)
@@ -148,16 +150,10 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
         log.debug("Successfully connected: {}", sc)
         onComplete(s)
         becomeConnected(connection, sc)
+        connection ! ResumeReading
     }
 
-    val writeQueue: Receive = {
-      case Received(data) ⇒ // Enqueue write
-        proxyChannel onSuccess {
-          case sc ⇒
-            sc.write(data)
-        }
-    }
-    context.become(writeQueue.orElse(onClose))
+    context.become(onClose)
   }
 
   private def waitConnection: Receive = {
