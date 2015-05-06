@@ -8,7 +8,7 @@ import javax.script._
 
 import akka.event.LoggingAdapter
 import com.karasiq.fileutils.PathUtils._
-import com.karasiq.proxychain.ProxyChain
+import com.karasiq.proxy.ProxyChain
 import com.karasiq.proxychain.app.{AppConfig, Firewall}
 import org.apache.commons.io.IOUtils
 

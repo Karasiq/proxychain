@@ -3,7 +3,7 @@ package com.karasiq.proxychain.app
 import java.net.InetSocketAddress
 
 import com.karasiq.fileutils.PathUtils._
-import com.karasiq.proxychain.ProxyChain
+import com.karasiq.proxy.ProxyChain
 import com.typesafe.config.{Config, ConfigFactory}
 
 private[app] object AppConfig {

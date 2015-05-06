@@ -1,6 +1,6 @@
 package com.karasiq.proxychain.app.script
 
-import com.karasiq.proxychain.ProxyChain
+import com.karasiq.proxy.ProxyChain
 
 /**
  * Proxy chain builder

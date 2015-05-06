@@ -1,7 +1,7 @@
 package com.karasiq.proxychain.app.script
 
 import com.karasiq.networkutils.proxy.Proxy
-import com.karasiq.proxychain.ProxyChain
+import com.karasiq.proxy.ProxyChain
 
 /**
  * Chain scope wrapper
