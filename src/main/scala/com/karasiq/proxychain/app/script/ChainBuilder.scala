@@ -28,8 +28,9 @@ private[script] object ChainBuilder {
   }
 
   def chainsFrom(maxChains: Int, entry: AnyRef, middle: AnyRef, exit: AnyRef): Seq[ProxyChain] = {
-    Seq.fill(maxChains)(asProxySeq(entry) ++ asProxySeq(middle) ++ asProxySeq(exit))
-      .map(ProxyChain.apply).distinct
+    val chains = Stream.continually(ProxyChain(asProxySeq(entry) ++ asProxySeq(middle) ++ asProxySeq(exit):_*))
+      .take(maxChains * 10).distinct.take(maxChains)
+    chains
   }
 
   def hops(proxies: AnyRef, hops: Int): ChainSelector = {
