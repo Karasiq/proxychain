@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.Executors
 
-import akka.actor.{Actor, ActorLogging, Props, Stash}
+import akka.actor.{Actor, ActorLogging, Props, Stash, Terminated}
 import akka.io.Tcp
 import com.karasiq.networkutils.SocketChannelWrapper
 import com.karasiq.tls.{TLS, TLSKeyStore}
@@ -104,6 +104,9 @@ private[app] final class TLSServer(address: InetSocketAddress, cfg: AppConfig) e
             case c @ Tcp.Close ⇒
               sender() ! ConfirmedClosed
               context.stop(self)
+			  
+			case Terminated(_) ⇒
+			  context.stop(self)
           }
 
           def readSuspended: Receive = {
