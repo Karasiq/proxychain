@@ -17,7 +17,7 @@ final class Boot extends Bootable {
 
   override def startup(): Unit = {
     val cfg = configFile.getConfig("proxyChain")
-    val (host, port) = (cfg.getString("host"), cfg.getInt("port"))
+    val host = cfg.getString("host")
 
     val config: AppConfig = asPath(cfg.getString("script")) match {
       case script if script.isRegularFile ⇒
@@ -30,8 +30,17 @@ final class Boot extends Bootable {
     }
 
     // Start server
-    val server = actorSystem.actorOf(Props(classOf[Server], config))
-    IO(Tcp)(actorSystem).tell(Bind(server, new InetSocketAddress(host, port)), server)
+
+    val port = cfg.getInt("port")
+    if (port != 0) {
+      val server = actorSystem.actorOf(Props(classOf[Server], config))
+      IO(Tcp)(actorSystem).tell(Bind(server, new InetSocketAddress(host, port)), server)
+    }
+
+    val tlsPort = cfg.getInt("tls-port")
+    if (tlsPort != 0) {
+      val server = actorSystem.actorOf(Props(classOf[TLSServer], new InetSocketAddress(host, tlsPort), config))
+    }
   }
 
   override def shutdown(): Unit = {
