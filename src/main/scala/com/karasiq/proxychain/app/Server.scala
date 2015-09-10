@@ -41,10 +41,7 @@ private[app] final class TLSServer(address: InetSocketAddress, cfg: AppConfig) e
   val config = AppConfig.externalConfig().getConfig("proxyChain")
   val keyName = config.getString("tls-key")
   val clientAuth = config.getBoolean("tls-client-auth")
-
-  assert(keyStore.contains(keyName), "ProxyChain server TLS key not found")
-  val certificate = keyStore.getCertificateChain(keyName)
-  val key = keyStore.getKey(keyName)
+  val keySet = TLS.KeySet(keyStore, keyName)
 
   private val acceptor = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
 
@@ -87,7 +84,7 @@ private[app] final class TLSServer(address: InetSocketAddress, cfg: AppConfig) e
       }
 
       catcher {
-        val serverWrapper = new TLSServerWrapper(TLS.CertificateKey(certificate, key), clientAuth, new TLSCertificateVerifier()) {
+        val serverWrapper = new TLSServerWrapper(keySet, clientAuth, new TLSCertificateVerifier()) {
           private val log = Logging(context.system, handler)
 
           override protected def onInfo(message: String): Unit = {
@@ -103,7 +100,7 @@ private[app] final class TLSServer(address: InetSocketAddress, cfg: AppConfig) e
           }
 
           override protected def onError(message: String, exc: Throwable): Unit = {
-            log.error("{}: {}", message, exc)
+            log.error(exc, message)
           }
         }
 
