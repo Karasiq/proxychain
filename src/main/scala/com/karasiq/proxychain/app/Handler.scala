@@ -24,7 +24,7 @@ import org.apache.commons.io.IOUtils
 import scala.collection.JavaConversions._
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success, Try, control}
 
 /**
  * SOCKS5 connection handler
@@ -156,6 +156,13 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
     context.become(onClose)
   }
 
+  private def dummyPage(): ByteString = {
+    val resource = getClass.getClassLoader.getResourceAsStream("proxychain-dummy.html")
+    control.Exception.allCatch.andFinally(resource.close()) {
+      ByteString(IOUtils.toString(resource, "UTF-8"), "UTF-8")
+    }
+  }
+
   private def waitConnection: Receive = {
     // SOCKS
     case Received(ConnectionRequest((socksVersion, command, address, userId))) ⇒
@@ -184,7 +191,11 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
     case Received(HttpRequest((method, url, headers))) ⇒
       val connection = sender()
       val address = HttpConnect.addressOf(url)
-      if (firewall.connectionIsAllowed(address)) {
+
+      if (address.getHostString.isEmpty) { // Plain HTTP request
+        write(connection, HttpResponse(HttpStatus(404, "Not Found"), Nil) ++ dummyPage())
+        connection ! Close
+      } else if (firewall.connectionIsAllowed(address)) {
         log.info("HTTP connection request: {}", address)
         connectThen(address) {
           case Failure(e) ⇒
