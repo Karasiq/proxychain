@@ -18,7 +18,6 @@ import com.karasiq.parsers.http.{HttpConnect, HttpMethod, HttpRequest, HttpRespo
 import com.karasiq.parsers.socks.SocksClient._
 import com.karasiq.parsers.socks.SocksServer._
 import com.karasiq.proxy.ProxyException
-import com.typesafe.config.ConfigFactory
 import org.apache.commons.io.IOUtils
 
 import scala.collection.JavaConversions._
@@ -127,7 +126,7 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
     }
   }
 
-  private val droppedHeaders = ConfigFactory.load().getStringList("proxyChain.http.dropHeaders").toSet
+  private val droppedHeaders = AppConfig.externalConfig().getStringList("proxyChain.http.dropHeaders").toSet
   private def cleanHeaders(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
     val ch = headers.filterNot(h ⇒ droppedHeaders.contains(h.name))
     log.debug("Headers dropped: {}", headers.diff(ch).mkString(", "))
