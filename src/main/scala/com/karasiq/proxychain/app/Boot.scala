@@ -45,7 +45,6 @@ object Boot extends App {
     override def run(): Unit = {
       actorSystem.log.debug("Shutting down ActorSystem")
       actorSystem.shutdown()
-      actorSystem.awaitTermination()
     }
   }))
 }

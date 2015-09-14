@@ -22,7 +22,7 @@ scalacOptions ++= Seq("-optimize", "-deprecation", "-feature")
 
 mainClass in Compile := Some("com.karasiq.proxychain.app.Boot")
 
-enablePlugins(JavaServerAppPackaging, LinuxPlugin)
+enablePlugins(JavaAppPackaging)
 
 maintainer := "Karasiq <yoba123@yandex.ru>"
 
