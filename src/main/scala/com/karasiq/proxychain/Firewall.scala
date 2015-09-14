@@ -1,4 +1,4 @@
-package com.karasiq.proxychain.app
+package com.karasiq.proxychain
 
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
 

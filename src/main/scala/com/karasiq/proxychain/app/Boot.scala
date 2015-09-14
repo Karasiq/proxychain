@@ -8,7 +8,8 @@ import akka.io.Tcp.Bind
 import akka.io.{IO, Tcp}
 import akka.kernel.Bootable
 import com.karasiq.fileutils.PathUtils._
-import com.karasiq.proxychain.app.script.ScriptEngine
+import com.karasiq.proxychain.AppConfig
+import com.karasiq.proxychain.script.ScriptEngine
 import com.typesafe.config.Config
 
 final class Boot extends Bootable {

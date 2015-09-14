@@ -1,4 +1,4 @@
-package com.karasiq.proxychain.app.script
+package com.karasiq.proxychain.script
 
 import java.io.{IOException, InputStream}
 import java.net.URL

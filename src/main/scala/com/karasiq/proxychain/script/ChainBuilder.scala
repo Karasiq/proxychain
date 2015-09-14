@@ -1,4 +1,4 @@
-package com.karasiq.proxychain.app.script
+package com.karasiq.proxychain.script
 
 import com.karasiq.proxy.ProxyChain
 

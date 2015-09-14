@@ -6,12 +6,13 @@ import java.util.concurrent.Executors
 
 import akka.actor._
 import akka.event.Logging
+import com.karasiq.proxychain.AppConfig
 import com.karasiq.tls.{TLS, TLSCertificateVerifier, TLSKeyStore, TLSServerWrapper}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control
 
-private[app] final class Server(cfg: AppConfig) extends Actor with ActorLogging {
+class Server(cfg: AppConfig) extends Actor with ActorLogging {
   import akka.io.Tcp._
 
   def receive = {
@@ -29,7 +30,7 @@ private[app] final class Server(cfg: AppConfig) extends Actor with ActorLogging 
 }
 
 // TLS tamper
-private[app] final class TLSServer(address: InetSocketAddress, cfg: AppConfig) extends Actor with ActorLogging {
+class TLSServer(address: InetSocketAddress, cfg: AppConfig) extends Actor with ActorLogging {
   import akka.io.Tcp._
   val serverSocket = ServerSocketChannel.open()
   private case class Accepted(socket: SocketChannel)
@@ -89,7 +90,7 @@ private[app] final class TLSServer(address: InetSocketAddress, cfg: AppConfig) e
           }
 
           override protected def onHandshakeFinished(): Unit = {
-            log.debug("TLS handhake finished")
+            log.debug("TLS handshake finished")
             tlsSocket.future.onSuccess { case socket: SocketChannel ⇒
               val actor = context.actorOf(Props(classOf[TLSHandlerTamper], socket))
               actor ! Register(handler)

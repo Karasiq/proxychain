@@ -18,6 +18,7 @@ import com.karasiq.parsers.http.{HttpConnect, HttpMethod, HttpRequest, HttpRespo
 import com.karasiq.parsers.socks.SocksClient._
 import com.karasiq.parsers.socks.SocksServer._
 import com.karasiq.proxy.ProxyException
+import com.karasiq.proxychain.{AppConfig, Firewall}
 import org.apache.commons.io.IOUtils
 
 import scala.collection.JavaConversions._
@@ -26,9 +27,9 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try, control}
 
 /**
- * SOCKS5 connection handler
+ * Proxy connection handler
  */
-private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging {
+class Handler(cfg: AppConfig) extends Actor with ActorLogging {
   import context.dispatcher
 
   private val firewall: Firewall = cfg.firewall()
@@ -86,21 +87,33 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
       context.stop(self)
   }
 
-  private def becomeConnected(conn: ActorRef, socket: SocketChannel): Unit = {
+  private def becomeConnected(connection: ActorRef, socket: SocketChannel): Unit = {
     val writer = context.actorOf(Props(SocketChannelWrapper.writer(socket)))
+    val watcher = context.actorOf(Props(classOf[ConnectionWatcher], connection))
 
     val stream: Receive = {
       case Received(data) ⇒
         writer ! Write(data)
+        watcher ! ConnectionWatcher.Refresh
     }
 
     context.become(stream.orElse(onClose))
     SocketChannelWrapper.register(socket, context.actorOf(Props(new Actor {
+      @throws[Exception](classOf[Exception])
+      override def preStart(): Unit = {
+        context.watch(connection)
+      }
+
       override def receive: Actor.Receive = {
         case Received(data) ⇒
-          conn ! Write(data)
+          connection ! Write(data)
+          watcher ! ConnectionWatcher.Refresh
+
         case PeerClosed ⇒
-          conn ! ConfirmedClose
+          connection ! Close
+          context.stop(self)
+
+        case Terminated(`connection`) ⇒
           context.stop(self)
       }
     })))
@@ -157,7 +170,7 @@ private[app] final class Handler(cfg: AppConfig) extends Actor with ActorLogging
 
   private def dummyPage(): ByteString = {
     val resource = getClass.getClassLoader.getResourceAsStream("proxychain-dummy.html")
-    control.Exception.allCatch.andFinally(resource.close()) {
+    control.Exception.allCatch.andFinally(IOUtils.closeQuietly(resource)) {
       ByteString(IOUtils.toString(resource, "UTF-8"), "UTF-8")
     }
   }

@@ -1,4 +1,4 @@
-package com.karasiq.proxychain.app
+package com.karasiq.proxychain
 
 import java.net.InetSocketAddress
 
@@ -6,7 +6,7 @@ import com.karasiq.fileutils.PathUtils._
 import com.karasiq.proxy.ProxyChain
 import com.typesafe.config.{Config, ConfigFactory}
 
-private[app] object AppConfig {
+object AppConfig {
   def apply(cfg: Config): AppConfig = new AppConfig {
     override def firewall(): Firewall = Firewall(cfg)
 

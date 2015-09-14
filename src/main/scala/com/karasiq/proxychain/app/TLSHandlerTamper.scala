@@ -9,8 +9,9 @@ import com.karasiq.networkutils.SocketChannelWrapper
 
 import scala.util.control
 
-class TLSHandlerTamper(tlsSocket: SocketChannel) extends Actor with ActorLogging with Stash {
+final class TLSHandlerTamper(tlsSocket: SocketChannel) extends Actor with ActorLogging with Stash {
   private var handler: Option[ActorRef] = None
+  private val writer: ActorRef = context.actorOf(Props(SocketChannelWrapper.writer(tlsSocket)), "tlsTamperWriter")
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
@@ -69,9 +70,8 @@ class TLSHandlerTamper(tlsSocket: SocketChannel) extends Actor with ActorLogging
       unstashAll()
       context.become(onClose.orElse(readResumed).orElse(streaming))
 
-    case w @ Write(data, ack) ⇒
-      tlsSocket.write(data.toByteBuffer)
-      if (ack != Tcp.NoAck) sender() ! ack
+    case w: Write ⇒
+      writer ! w
 
     case event: Tcp.Event ⇒
       handler.foreach(_ ! event)

@@ -1,4 +1,4 @@
-package com.karasiq.proxychain.app.script
+package com.karasiq.proxychain.script
 
 import com.karasiq.networkutils.proxy.Proxy
 import jdk.nashorn.api.scripting.JSObject

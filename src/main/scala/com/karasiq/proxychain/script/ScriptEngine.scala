@@ -1,4 +1,4 @@
-package com.karasiq.proxychain.app.script
+package com.karasiq.proxychain.script
 
 import java.io.InputStreamReader
 import java.net.InetSocketAddress
@@ -9,21 +9,20 @@ import javax.script._
 import akka.event.LoggingAdapter
 import com.karasiq.fileutils.PathUtils._
 import com.karasiq.proxy.ProxyChain
-import com.karasiq.proxychain.app.{AppConfig, Firewall}
+import com.karasiq.proxychain.{AppConfig, Firewall}
 import org.apache.commons.io.IOUtils
 
 import scala.language.dynamics
 import scala.util.control.Exception
 
-private[app] final class ScriptEngine(log: LoggingAdapter) {
+class ScriptEngine(log: LoggingAdapter) {
   // Script executor
   private val scriptEngine = {
     val scriptEngineManager = new ScriptEngineManager()
     scriptEngineManager.getEngineByName("coffeescript")
   }
 
-  @inline
-  private def createBindings(): Bindings = {
+  protected def createBindings(): Bindings = {
     val bindings = scriptEngine.createBindings()
     bindings.put("Conversions", Conversions) // JS conversions util
     bindings.put("ChainBuilder", ChainBuilder) // Chain build util
