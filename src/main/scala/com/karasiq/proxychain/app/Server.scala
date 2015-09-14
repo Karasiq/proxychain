@@ -1,5 +1,6 @@
 package com.karasiq.proxychain.app
 
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.Executors
@@ -49,8 +50,10 @@ class TLSServer(address: InetSocketAddress, cfg: AppConfig) extends Actor with A
     serverSocket.bind(address)
     acceptor.execute(new Runnable {
       override def run(): Unit = {
-        while (serverSocket.isOpen) {
-          self ! Accepted(serverSocket.accept())
+        control.Exception.ignoring(classOf[IOException]) {
+          while (serverSocket.isOpen) {
+            self ! Accepted(serverSocket.accept())
+          }
         }
       }
     })

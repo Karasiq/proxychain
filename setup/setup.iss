@@ -1,6 +1,6 @@
 #define OutputName "proxychain"
 #define MyAppName "Proxychain"
-#define MyAppVersion "1.3"
+#define MyAppVersion "1.4"
 #define MyAppPublisher "Karasiq, Inc."
 #define MyAppURL "http://www.github.com/Karasiq"
 #define MyAppExeName "bin\proxychain.bat"
