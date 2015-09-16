@@ -80,6 +80,7 @@ class TLSServer(address: InetSocketAddress, cfg: AppConfig) extends Actor with A
         val tlsSocket = Promise[SocketChannel]()
         tlsSocket.future.onComplete {
           case Success(sc) ⇒
+            log.debug("TLS handshake finished")
             val actor = context.actorOf(Props(classOf[TLSHandlerTamper], sc))
             actor ! Register(handler)
 
