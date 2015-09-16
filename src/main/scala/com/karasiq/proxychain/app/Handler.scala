@@ -29,7 +29,7 @@ import scala.util.{Failure, Success, Try, control}
 /**
  * Proxy connection handler
  */
-class Handler(cfg: AppConfig) extends Actor with ActorLogging {
+class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor with ActorLogging {
   import context.dispatcher
 
   private val firewall: Firewall = cfg.firewall()
@@ -183,7 +183,7 @@ class Handler(cfg: AppConfig) extends Actor with ActorLogging {
         // Command not supported
         val code = if (socksVersion == SocksVersion.SocksV5) Codes.Socks5.COMMAND_NOT_SUPPORTED else Codes.failure(socksVersion)
         write(connection, ConnectionStatusResponse(socksVersion, None, code))
-      } else if (firewall.connectionIsAllowed(address)) {
+      } else if (firewall.connectionIsAllowed(clientAddress, address)) {
         log.info("{} connection request: {}", socksVersion, address)
         connectThen(address) {
           case Failure(e) ⇒
@@ -193,7 +193,7 @@ class Handler(cfg: AppConfig) extends Actor with ActorLogging {
             write(connection, ConnectionStatusResponse(socksVersion, localAddressOf(sc), Codes.success(socksVersion)))
         }
       } else {
-        log.warning("{} connection rejected: {}", socksVersion, address)
+        log.warning("{} connection from {} rejected: {}", socksVersion, clientAddress, address)
         val code = if (socksVersion == SocksVersion.SocksV5) Codes.Socks5.CONN_NOT_ALLOWED else Codes.failure(socksVersion)
         write(connection, ConnectionStatusResponse(socksVersion, None, code))
         connection ! Close
@@ -207,7 +207,7 @@ class Handler(cfg: AppConfig) extends Actor with ActorLogging {
       if (address.getHostString.isEmpty) { // Plain HTTP request
         write(connection, HttpResponse(HttpStatus(404, "Not Found"), Nil) ++ dummyPage())
         connection ! Close
-      } else if (firewall.connectionIsAllowed(address)) {
+      } else if (firewall.connectionIsAllowed(clientAddress, address)) {
         log.info("HTTP connection request: {}", address)
         connectThen(address) {
           case Failure(e) ⇒
@@ -225,7 +225,7 @@ class Handler(cfg: AppConfig) extends Actor with ActorLogging {
             }
         }
       } else {
-        log.warning("HTTP connection rejected: {}", address)
+        log.warning("HTTP connection from {} rejected: {}", clientAddress, address)
         write(connection, HttpResponse(HttpStatus(403, "Forbidden"), Nil) ++ ByteString("Connection not allowed"))
         connection ! Close
       }

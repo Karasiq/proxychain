@@ -12,10 +12,10 @@ import scala.util.control
  * Network filter
  */
 trait Firewall {
-  def connectionIsAllowed(address: InetSocketAddress): Boolean
+  def connectionIsAllowed(clientAddress: InetSocketAddress, address: InetSocketAddress): Boolean
 }
 
-private final class FirewallImpl(dnsAllowed: Boolean, allowedRanges: Seq[Subnet], blockedRanges: Seq[Subnet], allowedHosts: Seq[String], blockedHosts: Seq[String], allowedPorts: Seq[Int], blockedPorts: Seq[Int]) extends Firewall {
+private final class FirewallImpl(dnsAllowed: Boolean, allowedRanges: Seq[Subnet], blockedRanges: Seq[Subnet], allowedHosts: Seq[String], blockedHosts: Seq[String], allowedPorts: Seq[Int], blockedPorts: Seq[Int], allowedClients: Seq[String], blockedClients: Seq[String]) extends Firewall {
   private def check[T](allowed: Seq[T], blocked: Seq[T], checkFunction: T ⇒ Boolean): Boolean = {
     (allowed.isEmpty || allowed.exists(checkFunction)) && blocked.forall(b ⇒ !checkFunction(b))
   }
@@ -45,11 +45,17 @@ private final class FirewallImpl(dnsAllowed: Boolean, allowedRanges: Seq[Subnet]
     check[Int](allowedPorts, blockedPorts, _ == port)
   }
 
-  override def connectionIsAllowed(address: InetSocketAddress): Boolean = {
-    checkHost(address) && checkIp(address) && checkPort(address.getPort)
+  @inline
+  private def checkClient(client: InetSocketAddress): Boolean = {
+    val host = if (dnsAllowed) client.getHostName else client.getHostString
+    check[String](allowedClients, blockedClients, _ == host)
+  }
+
+  override def connectionIsAllowed(clientAddress: InetSocketAddress, address: InetSocketAddress): Boolean = {
+    checkClient(clientAddress) && checkPort(address.getPort) && checkIp(address) && checkHost(address)
   }
 }
 
 object Firewall {
-  def apply(cfg: Config): Firewall = new FirewallImpl(cfg.getBoolean("allowDNS"), cfg.getStringList("allowedRanges").map(Subnet.apply), cfg.getStringList("blockedRanges").map(Subnet.apply), cfg.getStringList("allowedHosts"), cfg.getStringList("blockedHosts"), cfg.getIntList("allowedPorts").map(_.toInt), cfg.getIntList("blockedPorts").map(_.toInt))
+  def apply(cfg: Config): Firewall = new FirewallImpl(cfg.getBoolean("allowDNS"), cfg.getStringList("allowedRanges").map(Subnet.apply), cfg.getStringList("blockedRanges").map(Subnet.apply), cfg.getStringList("allowedHosts"), cfg.getStringList("blockedHosts"), cfg.getIntList("allowedPorts").map(_.toInt), cfg.getIntList("blockedPorts").map(_.toInt), cfg.getStringList("allowedClients"), cfg.getStringList("blockedClients"))
 }

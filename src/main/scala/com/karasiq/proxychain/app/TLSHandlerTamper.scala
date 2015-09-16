@@ -6,6 +6,7 @@ import akka.actor._
 import akka.io.Tcp
 import akka.io.Tcp._
 import com.karasiq.networkutils.SocketChannelWrapper
+import org.apache.commons.io.IOUtils
 
 import scala.util.control
 
@@ -29,7 +30,7 @@ final class TLSHandlerTamper(tlsSocket: SocketChannel) extends Actor with ActorL
   override def postStop(): Unit = {
     log.debug("TLS tamper stopped: {}", tlsSocket)
     SocketChannelWrapper.unregister(tlsSocket)
-    tlsSocket.close()
+    IOUtils.closeQuietly(tlsSocket)
     super.postStop()
   }
 

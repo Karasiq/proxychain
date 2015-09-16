@@ -21,19 +21,31 @@ exit = [
 ]
 
 isHttp = (address) ->
-  address.getPort() == 80 || address.getPort() == 443
+  address.getPort() in [80, 443]
+
+isLocalhost = (client) ->
+  client.getHostString() in ["localhost", "127.0.0.1", "::1"]
 
 return {
-  connectionIsAllowed: (address) -> isHttp(address) && DefaultFirewall.connectionIsAllowed(address)
+  connectionIsAllowed: (client, address) -> isLocalhost(client) && isHttp(address) && DefaultFirewall.connectionIsAllowed(client, address)
   proxyChainsFor: (address) -> ChainBuilder.chainsFrom(2, entry, ChainBuilder.hops(middle, 3), exit)
 }
 ```
 
 Configuration through `proxychain.conf`:
-```
+```scala
 proxyChain {
   host = "0.0.0.0" // Listen IP
   port = 1080 // Listen port
+  
+  tls { // Transport layer security settings
+    port = 0 // TLS listen port (0 to disable)
+    key = "proxychain-server" // TLS keypair name (searches for %key%, %key%-rsa, %key%-ecdsa, %key%-dsa, etc in keystore)
+    client-auth = true // Is client auth mandatory
+    key-store = "proxychain.jks" // Key store path
+    key-store-pass = "proxychain" // Key store password
+    trust-store = "proxychain-trust.jks" // Trust store path
+  }
   
   // Firewall settings:
   allowedRanges = [
@@ -55,6 +67,14 @@ proxyChain {
   ]
   blockedHosts = [
     // Hosts blacklist
+  ]
+  
+  allowedClients = [
+    // Clients whitelist
+  ]
+  
+  blockedClients = [
+    // Clients blacklist
   ]
   
   // Proxy servers here:

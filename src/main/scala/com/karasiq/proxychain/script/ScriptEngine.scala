@@ -58,8 +58,8 @@ class ScriptEngine(log: LoggingAdapter) {
       private val invoker = Invoker(scriptEngine, scope)
 
       override def firewall(): Firewall = new Firewall {
-        override def connectionIsAllowed(address: InetSocketAddress): Boolean = {
-          invoker.connectionIsAllowed(address)
+        override def connectionIsAllowed(clientAddress: InetSocketAddress, address: InetSocketAddress): Boolean = {
+          invoker.connectionIsAllowed(clientAddress, address)
         }
       }
 

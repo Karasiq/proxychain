@@ -32,18 +32,18 @@ object Boot extends App {
 
   val port = cfg.getInt("port")
   if (port != 0) {
-    val server = actorSystem.actorOf(Props(classOf[Server], config))
+    val server = actorSystem.actorOf(Props(classOf[Server], config), "proxychain-server")
     IO(Tcp)(actorSystem).tell(Bind(server, new InetSocketAddress(host, port)), server)
   }
 
-  val tlsPort = cfg.getInt("tls-port")
+  val tlsPort = cfg.getInt("tls.port")
   if (tlsPort != 0) {
-    val server = actorSystem.actorOf(Props(classOf[TLSServer], new InetSocketAddress(host, tlsPort), config))
+    val server = actorSystem.actorOf(Props(classOf[TLSServer], new InetSocketAddress(host, tlsPort), config), "proxychain-tls-server")
   }
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {
-      actorSystem.log.debug("Shutting down ActorSystem")
+      actorSystem.log.debug("Shutting down proxychain daemon")
       actorSystem.shutdown()
     }
   }))

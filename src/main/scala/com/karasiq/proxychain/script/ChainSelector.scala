@@ -1,7 +1,7 @@
 package com.karasiq.proxychain.script
 
 import com.karasiq.networkutils.proxy.Proxy
-import com.karasiq.proxy.ProxyChain
+import com.karasiq.proxychain.AppConfig
 
 /**
  * Chain scope wrapper
@@ -9,8 +9,10 @@ import com.karasiq.proxy.ProxyChain
  * @param hops Number of hops
  */
 private[script] final class ChainSelector(proxies: Seq[Proxy], hops: Int) {
+  private val proxyChainFactory = AppConfig.proxyChainFactory()
+
   def select(): Seq[Proxy] = {
-    ProxyChain.chainFrom(proxies, randomize = true, hops)
+    proxyChainFactory.chainFrom(proxies, randomize = true, hops)
   }
 }
 

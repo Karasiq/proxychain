@@ -8,10 +8,11 @@ import java.util.concurrent.Executors
 import akka.actor._
 import akka.event.Logging
 import com.karasiq.proxychain.AppConfig
-import com.karasiq.tls.{TLS, TLSCertificateVerifier, TLSKeyStore, TLSServerWrapper}
+import com.karasiq.tls.TLSServerWrapper
+import org.apache.commons.io.IOUtils
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.control
+import scala.util.{Failure, Success, control}
 
 class Server(cfg: AppConfig) extends Actor with ActorLogging {
   import akka.io.Tcp._
@@ -24,7 +25,7 @@ class Server(cfg: AppConfig) extends Actor with ActorLogging {
       context.stop(self)
 
     case c @ Connected(remote, local) ⇒ // New connection accepted
-      val handler = context.actorOf(Props(classOf[Handler], cfg))
+      val handler = context.actorOf(Props(classOf[Handler], cfg, remote))
       val connection = sender()
       connection ! Register(handler)
   }
@@ -36,11 +37,7 @@ class TLSServer(address: InetSocketAddress, cfg: AppConfig) extends Actor with A
   val serverSocket = ServerSocketChannel.open()
   private case class Accepted(socket: SocketChannel)
 
-  val keyStore = new TLSKeyStore()
-  val config = AppConfig.externalConfig().getConfig("proxyChain")
-  val keyName = config.getString("tls-key")
-  val clientAuth = config.getBoolean("tls-client-auth")
-  val keySet = TLS.KeySet(keyStore, keyName)
+  private val tlsConfig = AppConfig.tlsConfig()
 
   private val acceptor = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
 
@@ -64,40 +61,37 @@ class TLSServer(address: InetSocketAddress, cfg: AppConfig) extends Actor with A
   @throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
     super.postStop()
-    serverSocket.close()
+    IOUtils.closeQuietly(serverSocket)
     acceptor.shutdown()
   }
 
   def receive = {
     case Accepted(socket) ⇒ // New connection accepted
       import context.dispatcher
-      val handler = context.actorOf(Props(classOf[Handler], cfg))
+      val handler = context.actorOf(Props(classOf[Handler], cfg, socket.getRemoteAddress.asInstanceOf[InetSocketAddress]))
       val catcher = control.Exception.allCatch.withApply { exc ⇒
         context.stop(handler)
-        socket.close()
+        IOUtils.closeQuietly(socket)
       }
 
       catcher {
         val log = Logging(context.system, handler)
 
         val tlsSocket = Promise[SocketChannel]()
-        tlsSocket.future.onFailure {
-          case exc ⇒
+        tlsSocket.future.onComplete {
+          case Success(sc) ⇒
+            val actor = context.actorOf(Props(classOf[TLSHandlerTamper], sc))
+            actor ! Register(handler)
+
+          case Failure(exc) ⇒
             log.error(exc, "Error opening TLS socket")
             handler ! ErrorClosed
+            IOUtils.closeQuietly(socket)
         }
 
-        val serverWrapper = new TLSServerWrapper(keySet, clientAuth, new TLSCertificateVerifier()) {
+        val serverWrapper = new TLSServerWrapper(tlsConfig.keySet, tlsConfig.clientAuth, tlsConfig.verifier) {
           override protected def onInfo(message: String): Unit = {
             log.debug(message)
-          }
-
-          override protected def onHandshakeFinished(): Unit = {
-            log.debug("TLS handshake finished")
-            tlsSocket.future.onSuccess { case socket: SocketChannel ⇒
-              val actor = context.actorOf(Props(classOf[TLSHandlerTamper], socket))
-              actor ! Register(handler)
-            }
           }
 
           override protected def onError(message: String, exc: Throwable): Unit = {
