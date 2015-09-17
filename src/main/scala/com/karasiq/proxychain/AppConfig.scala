@@ -39,10 +39,10 @@ object AppConfig {
   def tlsConfig(): TLSConfig = {
     val config = AppConfig.externalConfig().getConfig("proxyChain.tls")
 
-    val verifier = new TLSCertificateVerifier(TLSCertificateVerifier.trustStore(config.getString("trust-store")))
+    val verifier = TLSCertificateVerifier.fromTrustStore(TLSCertificateVerifier.trustStore(config.getString("trust-store")))
     val keyStore = new TLSKeyStore(TLSKeyStore.keyStore(config.getString("key-store"), config.getString("key-store-pass")), config.getString("key-store-pass"))
     val clientAuth = config.getBoolean("client-auth")
-    val keySet = TLS.KeySet(keyStore, config.getString("key"))
+    val keySet = keyStore.getKeySet(config.getString("key"))
     TLSConfig(keyStore, verifier, keySet, clientAuth)
   }
 
