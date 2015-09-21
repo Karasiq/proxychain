@@ -4,7 +4,8 @@ import java.net.InetSocketAddress
 
 import com.karasiq.fileutils.PathUtils._
 import com.karasiq.proxy.{ProxyChain, ProxyChainFactory, ProxyConnectorFactory}
-import com.karasiq.tls.{TLS, TLSCertificateVerifier, TLSKeyStore}
+import com.karasiq.tls.x509.CertificateVerifier
+import com.karasiq.tls.{TLS, TLSKeyStore}
 import com.typesafe.config.{Config, ConfigFactory}
 
 object AppConfig {
@@ -34,12 +35,12 @@ object AppConfig {
 
   def apply(): AppConfig = apply(externalConfig().getConfig("proxyChain"))
   
-  case class TLSConfig(keyStore: TLSKeyStore, verifier: TLSCertificateVerifier, keySet: TLS.KeySet, clientAuth: Boolean)
+  case class TLSConfig(keyStore: TLSKeyStore, verifier: CertificateVerifier, keySet: TLS.KeySet, clientAuth: Boolean)
   
   def tlsConfig(): TLSConfig = {
     val config = AppConfig.externalConfig().getConfig("proxyChain.tls")
 
-    val verifier = TLSCertificateVerifier.fromTrustStore(TLSCertificateVerifier.trustStore(config.getString("trust-store")))
+    val verifier = CertificateVerifier.fromTrustStore(CertificateVerifier.trustStore(config.getString("trust-store")))
     val keyStore = new TLSKeyStore(TLSKeyStore.keyStore(config.getString("key-store"), config.getString("key-store-pass")), config.getString("key-store-pass"))
     val clientAuth = config.getBoolean("client-auth")
     val keySet = keyStore.getKeySet(config.getString("key"))
@@ -53,7 +54,7 @@ object AppConfig {
       tls.keyStore
     }
 
-    override protected def certificateVerifier: TLSCertificateVerifier = {
+    override protected def certificateVerifier: CertificateVerifier = {
       tls.verifier
     }
   }

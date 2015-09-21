@@ -1,8 +1,10 @@
 name := "proxychain"
 
-organization := "com.karasiq"
+organization := "com.github.karasiq"
 
-version := "1.4"
+version := "1.5"
+
+isSnapshot := false
 
 scalaVersion := "2.11.7"
 
@@ -12,10 +14,10 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % "2.4",
   "org.apache.httpcomponents" % "httpclient" % "4.3.3",
   "com.typesafe.akka" %% "akka-actor" % "2.3.11",
-  "com.karasiq" %% "cryptoutils" % "1.1",
-  "com.karasiq" %% "proxyutils" % "1.0",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
-  "com.karasiq" %% "coffeescript" % "1.0"
+  "com.github.karasiq" %% "cryptoutils" % "1.2",
+  "com.github.karasiq" %% "proxyutils" % "1.0",
+  "com.github.karasiq" %% "coffeescript" % "1.0"
 )
 
 scalacOptions ++= Seq("-optimize", "-deprecation", "-feature")
@@ -29,3 +31,33 @@ maintainer := "Karasiq <yoba123@yandex.ru>"
 packageSummary := "Proxychain"
 
 packageDescription := "Proxy-chaining SOCKS/HTTP/TLS proxy server"
+
+publishMavenStyle := true
+
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+
+publishArtifact in Test := false
+
+pomIncludeRepository := { _ ⇒ false }
+
+licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0"))
+
+homepage := Some(url("https://github.com/Karasiq/" + name.value))
+
+pomExtra := <scm>
+  <url>git@github.com:Karasiq/{name.value}.git</url>
+  <connection>scm:git:git@github.com:Karasiq/{name.value}.git</connection>
+</scm>
+  <developers>
+    <developer>
+      <id>karasiq</id>
+      <name>Piston Karasiq</name>
+      <url>https://github.com/Karasiq</url>
+    </developer>
+  </developers>
