@@ -1,4 +1,4 @@
-# Proxychain
+# Proxychain [![Dependencies](https://app.updateimpact.com/badge/692686982173822976/proxychain.svg?config=compile)](https://app.updateimpact.com/latest/692686982173822976/proxychain)
 Proxy-chaining SOCKS4/SOCKS5/HTTPS server
 
 # Configuration
