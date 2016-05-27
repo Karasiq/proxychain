@@ -6,7 +6,6 @@ import com.karasiq.networkutils.ip.Subnet
 import com.typesafe.config.Config
 
 import scala.collection.JavaConversions._
-import scala.util.control
 
 /**
  * Network filter
@@ -24,13 +23,19 @@ private final class FirewallImpl(dnsAllowed: Boolean, allowedRanges: Seq[Subnet]
   private def checkIp(address: InetSocketAddress): Boolean = {
     address match {
       case a if a.isUnresolved && dnsAllowed ⇒
-        val ip = InetAddress.getByName(address.getHostString)
-        control.Exception.catching(classOf[UnknownHostException]).withApply(_ ⇒ true) {
+        try {
+          val ip = InetAddress.getByName(address.getHostString)
           check[Subnet](allowedRanges, blockedRanges, _.isInRange(ip))
+        } catch {
+          case _: UnknownHostException ⇒
+            true
         }
 
       case ip if !ip.isUnresolved ⇒
         check[Subnet](allowedRanges, blockedRanges, _.isInRange(ip.getAddress))
+
+      case _ ⇒
+        true
     }
   }
 
