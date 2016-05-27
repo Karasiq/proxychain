@@ -3,7 +3,8 @@ package com.karasiq.proxychain
 import java.net.InetSocketAddress
 
 import com.karasiq.fileutils.PathUtils._
-import com.karasiq.proxy.{ProxyChain, ProxyChainFactory, ProxyConnectorFactory}
+import com.karasiq.networkutils.proxy.Proxy
+import com.karasiq.proxy.ProxyChain
 import com.karasiq.tls.x509.CertificateVerifier
 import com.karasiq.tls.{TLS, TLSKeyStore}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -12,8 +13,8 @@ object AppConfig {
   def apply(cfg: Config): AppConfig = new AppConfig {
     override def firewall(): Firewall = Firewall(cfg)
 
-    override def proxyChainsFor(address: InetSocketAddress): Seq[ProxyChain] = {
-      def loadChain(): ProxyChain = AppConfig.proxyChainFactory().config(cfg)
+    override def proxyChainsFor(address: InetSocketAddress): Seq[Seq[Proxy]] = {
+      def loadChain(): Seq[Proxy] = ProxyChain.chainFromConfig(cfg)
       val maxChains: Int = cfg.getInt("maxTriedChains")
 
       Seq.fill(maxChains)(loadChain()).distinct
@@ -46,25 +47,9 @@ object AppConfig {
     val keySet = keyStore.getKeySet(config.getString("key"))
     TLSConfig(keyStore, verifier, keySet, clientAuth)
   }
-
-  def proxyConnectorFactory(): ProxyConnectorFactory = new ProxyConnectorFactory {
-    private val tls = tlsConfig()
-
-    override protected def keyStore: TLSKeyStore = {
-      tls.keyStore
-    }
-
-    override protected def certificateVerifier: CertificateVerifier = {
-      tls.verifier
-    }
-  }
-
-  def proxyChainFactory(): ProxyChainFactory = new ProxyChainFactory {
-    override protected val proxyConnectorFactory: ProxyConnectorFactory = AppConfig.proxyConnectorFactory()
-  }
 }
 
 trait AppConfig {
   def firewall(): Firewall
-  def proxyChainsFor(address: InetSocketAddress): Seq[ProxyChain]
+  def proxyChainsFor(address: InetSocketAddress): Seq[Seq[Proxy]]
 }

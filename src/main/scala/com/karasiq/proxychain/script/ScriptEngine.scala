@@ -8,7 +8,7 @@ import javax.script._
 
 import akka.event.LoggingAdapter
 import com.karasiq.fileutils.PathUtils._
-import com.karasiq.proxy.ProxyChain
+import com.karasiq.networkutils.proxy.Proxy
 import com.karasiq.proxychain.{AppConfig, Firewall}
 import org.apache.commons.io.IOUtils
 
@@ -63,10 +63,13 @@ class ScriptEngine(log: LoggingAdapter) {
         }
       }
 
-      override def proxyChainsFor(address: InetSocketAddress): Seq[ProxyChain] = {
+      override def proxyChainsFor(address: InetSocketAddress): Seq[Seq[Proxy]] = {
         invoker.proxyChainsFor(address) match {
           case Conversions.ScalaSeq(chains @ _*) ⇒
-            chains.collect { case pc: ProxyChain ⇒ pc }
+            chains.collect {
+              case Conversions.ScalaSeq(proxies @ _*) ⇒
+                proxies.collect { case p: Proxy ⇒ p }
+            }
         }
       }
     }

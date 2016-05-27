@@ -11,6 +11,10 @@ import com.karasiq.proxychain.AppConfig
 import com.karasiq.proxychain.script.ScriptEngine
 import com.typesafe.config.Config
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 object Boot extends App {
   val configFile: Config = AppConfig.externalConfig()
   val actorSystem: ActorSystem = ActorSystem("ProxyChain", configFile.resolve())
@@ -44,7 +48,7 @@ object Boot extends App {
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {
       actorSystem.log.debug("Shutting down proxychain daemon")
-      actorSystem.shutdown()
+      Await.result(actorSystem.terminate(), 5 minutes)
     }
   }))
 }
