@@ -2,7 +2,7 @@ package com.karasiq.proxychain.app
 
 import java.net.InetSocketAddress
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.io.Tcp.Bind
 import akka.io.{IO, Tcp}
@@ -36,13 +36,14 @@ object Boot extends App {
 
   val port = cfg.getInt("port")
   if (port != 0) {
-    val server = actorSystem.actorOf(Props(classOf[Server], config), "proxychain-server")
+    val server = actorSystem.actorOf(Server.props(config, tls = false), "proxychain-server")
     IO(Tcp)(actorSystem).tell(Bind(server, new InetSocketAddress(host, port)), server)
   }
 
   val tlsPort = cfg.getInt("tls.port")
   if (tlsPort != 0) {
-    val server = actorSystem.actorOf(Props(classOf[TLSServer], new InetSocketAddress(host, tlsPort), config), "proxychain-tls-server")
+    val server = actorSystem.actorOf(Server.props(config, tls = true), "proxychain-tls-server")
+    IO(Tcp)(actorSystem).tell(Bind(server, new InetSocketAddress(host, tlsPort)), server)
   }
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {

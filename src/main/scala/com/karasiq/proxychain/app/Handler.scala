@@ -4,7 +4,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 
 import akka.Done
-import akka.actor.SupervisorStrategy.{Resume, Stop}
+import akka.actor.SupervisorStrategy.Stop
 import akka.actor._
 import akka.io.Tcp
 import akka.io.Tcp._
@@ -15,7 +15,6 @@ import akka.util.ByteString
 import com.karasiq.networkutils.http.HttpStatus
 import com.karasiq.networkutils.http.headers.HttpHeader
 import com.karasiq.networkutils.url.URLParser
-import com.karasiq.parsers.ParserException
 import com.karasiq.parsers.http.{HttpConnect, HttpMethod, HttpRequest, HttpResponse}
 import com.karasiq.parsers.socks.SocksClient._
 import com.karasiq.parsers.socks.SocksServer._
@@ -33,7 +32,7 @@ import scala.util.{Failure, Success, Try, control}
 /**
  * Proxy connection handler
  */
-class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor with ActorLogging {
+private[app] class Handler(connection: ActorRef, cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor with ActorLogging {
   import context.{dispatcher, system}
 
   implicit val actorMaterializer = ActorMaterializer(ActorMaterializerSettings(system))(system)
@@ -41,6 +40,12 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
   var buffer = ByteString.empty
   var authenticated = false
   val firewall: Firewall = cfg.firewall()
+
+  @scala.throws[Exception](classOf[Exception])
+  override def preStart() = {
+    super.preStart()
+    context.watch(connection)
+  }
 
   private def write(connection: ActorRef, bytes: ByteString) = connection ! Write(bytes)
 
@@ -51,8 +56,9 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
     val promise = Promise[(OutgoingConnection, Subscriber[ByteString], Publisher[ByteString])]
     val futures = chains.map { chain ⇒
       val ((proxyInput, (connFuture, proxyFuture)), proxyOutput) = Source.asSubscriber[ByteString]
-        .idleTimeout(30 seconds)
-        .viaMat(ProxyChain.connect(address, chain:_*))(Keep.both)
+        .initialTimeout(10 seconds)
+        .idleTimeout(5 minutes)
+        .viaMat(ProxyChain.connect(address, chain, Some(AppConfig.tlsContext())))(Keep.both)
         .toMat(Sink.asPublisher[ByteString](fanout = false))(Keep.both)
         .run()
 
@@ -123,7 +129,6 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
   }
 
   private def connectThen(address: InetSocketAddress)(onComplete: Try[(OutgoingConnection, Subscriber[ByteString], Publisher[ByteString])] ⇒ Unit): Unit = {
-    val connection = sender()
     val ctx = context
     connection ! SuspendReading
     context.become(onClose)
@@ -154,19 +159,19 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
         case ConnectionRequest((socksVersion, command, address, userId), rest) ⇒
           authenticated = true
           buffer = ByteString(rest:_*)
-          val connection = sender()
-          context.watch(connection)
           if (command != Command.TcpConnection) {
             // Command not supported
             val code = if (socksVersion == SocksVersion.SocksV5) Codes.Socks5.COMMAND_NOT_SUPPORTED else Codes.failure(socksVersion)
             write(connection, ConnectionStatusResponse(socksVersion, None, code))
             connection ! Close
+            context.stop(self)
           } else if (firewall.connectionIsAllowed(clientAddress, address)) {
             log.info("{} connection request: {}", socksVersion, address)
             connectThen(address) {
               case Failure(e) ⇒
                 write(connection, ConnectionStatusResponse(socksVersion, None, Codes.failure(socksVersion)))
                 connection ! Close
+                context.stop(self)
 
               case Success((proxyConnection, _, _)) ⇒
                 write(connection, ConnectionStatusResponse(socksVersion, Some(proxyConnection.localAddress), Codes.success(socksVersion)))
@@ -176,11 +181,11 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
             val code = if (socksVersion == SocksVersion.SocksV5) Codes.Socks5.CONN_NOT_ALLOWED else Codes.failure(socksVersion)
             write(connection, ConnectionStatusResponse(socksVersion, None, code))
             connection ! Close
+            context.stop(self)
           }
 
         case AuthRequest(methods, rest) if !authenticated ⇒
           buffer = ByteString(rest:_*)
-          val connection = sender()
           if (methods.contains(AuthMethod.NoAuth)) {
             authenticated = true
             write(connection, AuthMethodResponse(AuthMethod.NoAuth))
@@ -188,22 +193,24 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
             log.error("No valid authentication methods provided")
             write(connection, AuthMethodResponse.notSupported)
             connection ! Close
+            context.stop(self)
           }
 
         case HttpRequest((method, url, headers), rest) ⇒
           buffer = ByteString(rest:_*)
-          val connection = sender()
           val address = HttpConnect.addressOf(url)
 
           if (address.getHostString.isEmpty) { // Plain HTTP request
             write(connection, HttpResponse(HttpStatus(404, "Not Found"), Nil) ++ dummyPage())
             connection ! Close
+            context.stop(self)
           } else if (firewall.connectionIsAllowed(clientAddress, address)) {
             log.info("HTTP connection request: {}", address)
             connectThen(address) {
               case Failure(e) ⇒
                 write(connection, HttpResponse(HttpStatus(400, "Bad Request"), Nil) ++ ByteString("Connection failed"))
                 connection ! Close
+                context.stop(self)
 
               case Success((_, input, output)) ⇒
                 method match {
@@ -220,6 +227,7 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
             log.warning("HTTP connection from {} rejected: {}", clientAddress, address)
             write(connection, HttpResponse(HttpStatus(403, "Forbidden"), Nil) ++ ByteString("Connection not allowed"))
             connection ! Close
+            context.stop(self)
           }
       }
   }
@@ -227,7 +235,6 @@ class Handler(cfg: AppConfig, clientAddress: InetSocketAddress) extends Actor wi
   override def receive = waitConnection.orElse(onClose)
 
   override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
-    case _: ParserException ⇒ Resume // Invalid request
     case _: IOException ⇒ Stop // Connection error
   }
 }
