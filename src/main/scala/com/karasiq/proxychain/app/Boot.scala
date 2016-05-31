@@ -3,8 +3,8 @@ package com.karasiq.proxychain.app
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.stream.scaladsl.Tcp.IncomingConnection
-import akka.stream.scaladsl.{Concat, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{ActorMaterializer, ClosedShape, scaladsl}
+import akka.stream.scaladsl.{Concat, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Tcp}
+import akka.stream.{ActorMaterializer, ClosedShape}
 import akka.util.ByteString
 import com.karasiq.fileutils.PathUtils._
 import com.karasiq.proxy.server.{ProxyConnectionRequest, ProxyServerStage}
@@ -64,7 +64,7 @@ object Boot extends App {
 
   val port = cfg.getInt("port")
   if (port != 0) {
-    scaladsl.Tcp().bind(host, port)
+    Tcp().bind(host, port)
       .runForeach(tcpConn ⇒ tcpConn.handleWith(Flow.fromGraph(new ProxyServerStage)).foreach {
         case (request, connection) ⇒
           proxyChainConnect(tcpConn, request, connection)
@@ -73,7 +73,7 @@ object Boot extends App {
 
   val tlsPort = cfg.getInt("tls.port")
   if (tlsPort != 0) {
-    scaladsl.Tcp().bind(host, tlsPort)
+    Tcp().bind(host, tlsPort)
       .runForeach(tcpConn ⇒ tcpConn.handleWith(Flow.fromGraph(ProxyServerStage.withTls(AppConfig.tlsContext(server = true)))).foreach {
         case (request, connection) ⇒
           proxyChainConnect(tcpConn, request, connection)
