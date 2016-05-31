@@ -1,12 +1,13 @@
 package com.karasiq.proxychain.app
 
-import java.net.InetSocketAddress
-
 import akka.actor.ActorSystem
 import akka.event.Logging
-import akka.io.Tcp.Bind
-import akka.io.{IO, Tcp}
+import akka.stream.scaladsl.Tcp.IncomingConnection
+import akka.stream.scaladsl.{Concat, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import akka.stream.{ActorMaterializer, ClosedShape, scaladsl}
+import akka.util.ByteString
 import com.karasiq.fileutils.PathUtils._
+import com.karasiq.proxy.server.{ProxyConnectionRequest, ProxyServerStage}
 import com.karasiq.proxychain.AppConfig
 import com.karasiq.proxychain.script.ScriptEngine
 import com.typesafe.config.Config
@@ -14,10 +15,13 @@ import com.typesafe.config.Config
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 object Boot extends App {
   val configFile: Config = AppConfig.externalConfig()
-  val actorSystem: ActorSystem = ActorSystem("ProxyChain", configFile.resolve())
+  implicit val actorSystem: ActorSystem = ActorSystem("ProxyChain", configFile.resolve())
+  implicit val actorMaterializer = ActorMaterializer()
+  import actorSystem.dispatcher
 
   val cfg = configFile.getConfig("proxyChain")
   val host = cfg.getString("host")
@@ -33,17 +37,47 @@ object Boot extends App {
   }
 
   // Start server
+  val connector = Connector(config)
+  def proxyChainConnect(tcpConn: IncomingConnection, request: ProxyConnectionRequest, connection: Flow[ByteString, ByteString, _]): Unit = {
+    connector.connect(request, tcpConn.remoteAddress)
+      .onComplete {
+        case Success((outConn, proxy)) ⇒
+          val graph = RunnableGraph.fromGraph(GraphDSL.create(connection, proxy)(Keep.none) { implicit builder ⇒ (connection, proxy) ⇒
+            import GraphDSL.Implicits._
+            val success = builder.add(Source.single(ProxyServerStage.successResponse(request)))
+            val toConnection = builder.add(Concat[ByteString]())
+            connection ~> proxy
+            success ~> toConnection
+            proxy ~> toConnection
+            toConnection ~> connection
+            ClosedShape
+          })
+          graph.run()
+
+        case Failure(exc) ⇒
+          val source = Source
+            .single(ProxyServerStage.failureResponse(request))
+            .concat(Source.failed(exc))
+          source.via(connection).runWith(Sink.cancelled)
+      }
+  }
 
   val port = cfg.getInt("port")
   if (port != 0) {
-    val server = actorSystem.actorOf(Server.props(config, tls = false), "proxychain-server")
-    IO(Tcp)(actorSystem).tell(Bind(server, new InetSocketAddress(host, port)), server)
+    scaladsl.Tcp().bind(host, port)
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(Flow.fromGraph(new ProxyServerStage)).foreach {
+        case (request, connection) ⇒
+          proxyChainConnect(tcpConn, request, connection)
+      })
   }
 
   val tlsPort = cfg.getInt("tls.port")
   if (tlsPort != 0) {
-    val server = actorSystem.actorOf(Server.props(config, tls = true), "proxychain-tls-server")
-    IO(Tcp)(actorSystem).tell(Bind(server, new InetSocketAddress(host, tlsPort)), server)
+    scaladsl.Tcp().bind(host, tlsPort)
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(Flow.fromGraph(ProxyServerStage.withTls(AppConfig.tlsContext(server = true)))).foreach {
+        case (request, connection) ⇒
+          proxyChainConnect(tcpConn, request, connection)
+      })
   }
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
