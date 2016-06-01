@@ -2,7 +2,7 @@ name := "proxychain"
 
 organization := "com.github.karasiq"
 
-version := "2.0.3"
+version := "2.0.4-SNAPSHOT"
 
 isSnapshot := version.value.endsWith("SNAPSHOT")
 
@@ -10,7 +10,7 @@ scalaVersion := "2.11.8"
 
 resolvers += "softprops-maven" at "http://dl.bintray.com/content/softprops/maven"
 
-// resolvers += Resolver.sonatypeRepo("snapshots")
+resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies ++= {
   val akkaV = "2.4.6"
@@ -22,7 +22,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-experimental" % akkaV,
     "org.scalatest" %% "scalatest" % "2.2.4" % "test",
     "com.github.karasiq" %% "cryptoutils" % "1.4.0",
-    "com.github.karasiq" %% "proxyutils" % "2.0.6",
+    "com.github.karasiq" %% "proxyutils" % "2.0.7-SNAPSHOT",
     "com.github.karasiq" %% "coffeescript" % "1.0"
   )
 }
