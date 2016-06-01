@@ -1,4 +1,4 @@
-# Proxychain [![Dependencies](https://app.updateimpact.com/badge/692686982173822976/proxychain.svg?config=compile)](https://app.updateimpact.com/latest/692686982173822976/proxychain)
+# Proxychain [![Version](http://img.shields.io/badge/version-2.0.2-blue.svg?style=flat)](https://github.com/Karasiq/proxychain/releases) [![Dependencies](https://app.updateimpact.com/badge/692686982173822976/proxychain.svg?config=compile)](https://app.updateimpact.com/latest/692686982173822976/proxychain)
 Proxy-chaining SOCKS4/SOCKS5/HTTPS server
 
 # Configuration
@@ -40,7 +40,6 @@ proxyChain {
   
   tls { // Transport layer security settings
     port = 0 // TLS listen port (0 to disable)
-    key = "proxychain-server" // TLS keypair name (searches for %key%, %key%-rsa, %key%-ecdsa, %key%-dsa, etc in keystore)
     client-auth = true // Is client auth mandatory
     key-store = "proxychain.jks" // Key store path
     key-store-pass = "proxychain" // Key store password
