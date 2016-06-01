@@ -1,7 +1,7 @@
 package com.karasiq.proxychain
 
 import java.net.InetSocketAddress
-import java.security.SecureRandom
+import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
@@ -9,8 +9,8 @@ import akka.stream.TLSClientAuth
 import com.karasiq.fileutils.PathUtils._
 import com.karasiq.networkutils.proxy.Proxy
 import com.karasiq.proxy.ProxyChain
-import com.karasiq.tls.x509.{CertificateVerifier, TrustStore}
-import com.karasiq.tls.{TLS, TLSKeyStore}
+import com.karasiq.tls.TLSKeyStore
+import com.karasiq.tls.x509.TrustStore
 import com.typesafe.config.{Config, ConfigFactory}
 
 object AppConfig {
@@ -38,16 +38,14 @@ object AppConfig {
 
   def apply(): AppConfig = apply(externalConfig().getConfig("proxyChain"))
 
-  case class TLSConfig(keyStore: TLSKeyStore, verifier: CertificateVerifier, keySet: TLS.KeySet, clientAuth: Boolean)
+  case class TLSConfig(keyStore: TLSKeyStore, trustStore: KeyStore, clientAuth: Boolean)
 
   def tlsConfig(): TLSConfig = {
     val config = AppConfig.externalConfig().getConfig("proxyChain.tls")
-
-    val verifier = CertificateVerifier.fromTrustStore(TrustStore.fromFile(config.getString("trust-store")))
     val keyStore = new TLSKeyStore(TLSKeyStore.keyStore(config.getString("key-store"), config.getString("key-store-pass")), config.getString("key-store-pass"))
+    val trustStore = TrustStore.fromFile(config.getString("trust-store"))
     val clientAuth = config.getBoolean("client-auth")
-    val keySet = keyStore.getKeySet(config.getString("key"))
-    TLSConfig(keyStore, verifier, keySet, clientAuth)
+    TLSConfig(keyStore, trustStore, clientAuth)
   }
 
   def tlsContext(server: Boolean = false): HttpsConnectionContext = {
@@ -58,7 +56,7 @@ object AppConfig {
     keyManagerFactory.init(tlsConfig.keyStore.keyStore, tlsConfig.keyStore.password.toCharArray)
 
     val trustManagerFactory: TrustManagerFactory = TrustManagerFactory.getInstance("SunX509")
-    trustManagerFactory.init(tlsConfig.keyStore.keyStore)
+    trustManagerFactory.init(tlsConfig.trustStore)
     sslContext.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, SecureRandom.getInstanceStrong)
 
     ConnectionContext.https(sslContext, clientAuth = if (server && tlsConfig.clientAuth) Some(TLSClientAuth.need) else None)
