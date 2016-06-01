@@ -2,12 +2,12 @@ package com.karasiq.proxychain.app
 
 import akka.actor.ActorSystem
 import akka.event.Logging
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Tcp.IncomingConnection
-import akka.stream.scaladsl.{Concat, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Tcp}
-import akka.stream.{ActorMaterializer, ClosedShape}
+import akka.stream.scaladsl.{Flow, Sink, Source, Tcp}
 import akka.util.ByteString
 import com.karasiq.fileutils.PathUtils._
-import com.karasiq.proxy.server.{ProxyConnectionRequest, ProxyServerStage}
+import com.karasiq.proxy.server.{ProxyConnectionRequest, ProxyServer}
 import com.karasiq.proxychain.AppConfig
 import com.karasiq.proxychain.script.ScriptEngine
 import com.typesafe.config.Config
@@ -18,15 +18,15 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 object Boot extends App {
-  val configFile: Config = AppConfig.externalConfig()
-  implicit val actorSystem: ActorSystem = ActorSystem("ProxyChain", configFile.resolve())
+  val rootConfig: Config = AppConfig.externalConfig()
+  implicit val actorSystem: ActorSystem = ActorSystem("ProxyChain", rootConfig.resolve())
   implicit val actorMaterializer = ActorMaterializer()
   import actorSystem.dispatcher
 
-  val cfg = configFile.getConfig("proxyChain")
+  val cfg = rootConfig.getConfig("proxyChain")
   val host = cfg.getString("host")
 
-  val config: AppConfig = asPath(cfg.getString("script")) match {
+  val appConfig: AppConfig = asPath(cfg.getString("script")) match {
     case script if script.isRegularFile ⇒
       actorSystem.log.debug("Loading script: {}", script)
       val scriptEngine = new ScriptEngine(Logging.getLogger(actorSystem, "ScriptEngine"))
@@ -37,46 +37,37 @@ object Boot extends App {
   }
 
   // Start server
-  val connector = Connector(config)
-  def proxyChainConnect(tcpConn: IncomingConnection, request: ProxyConnectionRequest, connection: Flow[ByteString, ByteString, _]): Unit = {
+  val connector = Connector(appConfig)
+  def runViaChain(tcpConn: IncomingConnection, request: ProxyConnectionRequest, connection: Flow[ByteString, ByteString, _]): Unit = {
     connector.connect(request, tcpConn.remoteAddress)
       .onComplete {
         case Success((outConn, proxy)) ⇒
-          val graph = RunnableGraph.fromGraph(GraphDSL.create(connection, proxy)(Keep.none) { implicit builder ⇒ (connection, proxy) ⇒
-            import GraphDSL.Implicits._
-            val success = builder.add(Source.single(ProxyServerStage.successResponse(request)))
-            val toConnection = builder.add(Concat[ByteString]())
-            connection ~> proxy
-            success ~> toConnection
-            proxy ~> toConnection
-            toConnection ~> connection
-            ClosedShape
-          })
-          graph.run()
+          ProxyServer.withSuccess(connection, request)
+            .join(proxy)
+            .run()
 
         case Failure(exc) ⇒
-          val source = Source
-            .single(ProxyServerStage.failureResponse(request))
-            .concat(Source.failed(exc))
-          source.via(connection).runWith(Sink.cancelled)
+          Source.failed(exc)
+            .via(ProxyServer.withFailure(connection, request))
+            .runWith(Sink.cancelled)
       }
   }
 
   val port = cfg.getInt("port")
   if (port != 0) {
     Tcp().bind(host, port)
-      .runForeach(tcpConn ⇒ tcpConn.handleWith(Flow.fromGraph(new ProxyServerStage)).foreach {
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer()).foreach {
         case (request, connection) ⇒
-          proxyChainConnect(tcpConn, request, connection)
+          runViaChain(tcpConn, request, connection)
       })
   }
 
   val tlsPort = cfg.getInt("tls.port")
   if (tlsPort != 0) {
     Tcp().bind(host, tlsPort)
-      .runForeach(tcpConn ⇒ tcpConn.handleWith(Flow.fromGraph(ProxyServerStage.withTls(AppConfig.tlsContext(server = true)))).foreach {
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer.withTls(AppConfig.tlsContext(server = true))).foreach {
         case (request, connection) ⇒
-          proxyChainConnect(tcpConn, request, connection)
+          runViaChain(tcpConn, request, connection)
       })
   }
 

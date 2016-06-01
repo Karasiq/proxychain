@@ -10,7 +10,7 @@ import com.karasiq.proxy.ProxyChain
  */
 private[script] final class ChainSelector(proxies: Seq[Proxy], hops: Int) {
   def select(): Seq[Proxy] = {
-    ProxyChain.createChain(proxies, randomize = true, hops)
+    ProxyChain.select(proxies, randomize = true, hops)
   }
 }
 

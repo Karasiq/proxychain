@@ -18,10 +18,8 @@ object AppConfig {
     override def firewall(): Firewall = Firewall(cfg)
 
     override def proxyChainsFor(address: InetSocketAddress): Seq[Seq[Proxy]] = {
-      def loadChain(): Seq[Proxy] = ProxyChain.chainFromConfig(cfg)
       val maxChains: Int = cfg.getInt("maxTriedChains")
-
-      Seq.fill(maxChains)(loadChain()).distinct
+      Seq.fill(maxChains)(ProxyChain.fromConfig(cfg)).distinct
     }
   }
 

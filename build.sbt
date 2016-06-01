@@ -2,7 +2,7 @@ name := "proxychain"
 
 organization := "com.github.karasiq"
 
-version := "2.0.2"
+version := "2.0.3"
 
 isSnapshot := version.value.endsWith("SNAPSHOT")
 
@@ -22,7 +22,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-experimental" % akkaV,
     "org.scalatest" %% "scalatest" % "2.2.4" % "test",
     "com.github.karasiq" %% "cryptoutils" % "1.4.0",
-    "com.github.karasiq" %% "proxyutils" % "2.0.4",
+    "com.github.karasiq" %% "proxyutils" % "2.0.6",
     "com.github.karasiq" %% "coffeescript" % "1.0"
   )
 }

@@ -40,7 +40,7 @@ private[app] class Connector(cfg: AppConfig)(implicit actorSystem: ActorSystem, 
 
       (for (_ ← proxyFuture; proxyConnection ← connFuture) yield {
         if (promise.trySuccess((proxyConnection, Flow.fromSinkAndSource(Sink.fromSubscriber(proxyInput), Source.fromPublisher(proxyOutput))))) {
-          if (chain.isEmpty) log.warning("Proxy chain not defined, direct connection to {} opened", request.address)
+          if (chain.isEmpty) log.warning("Proxy chain is not defined, direct connection to {} opened", request.address)
           else log.info("Opened connection through proxy chain {} to {}", chain.mkString("[", " -> ", "]"), request.address)
         }
         Done
