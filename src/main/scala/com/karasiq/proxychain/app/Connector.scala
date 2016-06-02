@@ -32,7 +32,7 @@ private[app] class Connector(cfg: AppConfig)(implicit actorSystem: ActorSystem, 
     val promise = Promise[(OutgoingConnection, Flow[ByteString, ByteString, NotUsed])]
     val futures = chains.map { chain ⇒
       val ((proxyInput, (connFuture, proxyFuture)), proxyOutput) = Source.asSubscriber[ByteString]
-        .initialTimeout(10 seconds)
+        .initialTimeout(30 seconds)
         .idleTimeout(5 minutes)
         .viaMat(ProxyChain.connect(request.address, chain, Some(AppConfig.tlsContext())))(Keep.both)
         .toMat(Sink.asPublisher[ByteString](fanout = false))(Keep.both)
