@@ -55,9 +55,10 @@ object Boot extends App {
   }
 
   val port = cfg.getInt("port")
+  val bufferSize = cfg.getInt("buffer-size")
   if (port != 0) {
     Tcp().bind(host, port, options = List(SO.KeepAlive(true), SO.TcpNoDelay(true)), idleTimeout = 5 minutes)
-      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer().buffer(cfg.getInt("buffer-size"), OverflowStrategy.backpressure)).foreach {
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer().buffer(bufferSize, OverflowStrategy.backpressure)).foreach {
         case (request, connection) ⇒
           runViaChain(tcpConn, request, connection)
       })
@@ -66,7 +67,7 @@ object Boot extends App {
   val tlsPort = cfg.getInt("tls.port")
   if (tlsPort != 0) {
     Tcp().bind(host, tlsPort, options = List(SO.KeepAlive(true), SO.TcpNoDelay(true)), idleTimeout = 5 minutes)
-      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer.withTls(AppConfig.tlsContext(server = true)).buffer(cfg.getInt("buffer-size"), OverflowStrategy.backpressure)).foreach {
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer.withTls(AppConfig.tlsContext(server = true)).buffer(bufferSize, OverflowStrategy.backpressure)).foreach {
         case (request, connection) ⇒
           runViaChain(tcpConn, request, connection)
       })
