@@ -16,6 +16,7 @@ import com.karasiq.proxychain.AppConfig
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
+import scala.util.Try
 
 private [app] object Connector {
   def apply(cfg: AppConfig)(implicit as: ActorSystem, am: ActorMaterializer) = new Connector(cfg)
@@ -30,11 +31,12 @@ private[app] class Connector(cfg: AppConfig)(implicit actorSystem: ActorSystem, 
     log.debug("Trying connect to {} through chains: {}", request.address, chains)
 
     val promise = Promise[(OutgoingConnection, Flow[ByteString, ByteString, NotUsed])]
+    val tlsContext = Try(AppConfig.tlsContext()).toOption
     val futures = chains.map { chain ⇒
       val ((proxyInput, (connFuture, proxyFuture)), proxyOutput) = Source.asSubscriber[ByteString]
         .initialTimeout(30 seconds)
         .idleTimeout(5 minutes)
-        .viaMat(ProxyChain.connect(request.address, chain, Some(AppConfig.tlsContext())))(Keep.both)
+        .viaMat(ProxyChain.connect(request.address, chain, tlsContext))(Keep.both)
         .toMat(Sink.asPublisher[ByteString](fanout = false))(Keep.both)
         .run()
 
