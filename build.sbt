@@ -22,7 +22,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-experimental" % akkaV,
     "org.scalatest" %% "scalatest" % "2.2.4" % "test",
     "com.github.karasiq" %% "cryptoutils" % "1.4.0",
-    "com.github.karasiq" %% "proxyutils" % "2.0.7",
+    "com.github.karasiq" %% "proxyutils" % "2.0.8-SNAPSHOT",
     "com.github.karasiq" %% "coffeescript" % "1.0"
   )
 }

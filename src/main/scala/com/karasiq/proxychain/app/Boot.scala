@@ -2,9 +2,10 @@ package com.karasiq.proxychain.app
 
 import akka.actor.ActorSystem
 import akka.event.Logging
-import akka.stream.ActorMaterializer
+import akka.io.Tcp.SO
 import akka.stream.scaladsl.Tcp.IncomingConnection
 import akka.stream.scaladsl.{Flow, Sink, Source, Tcp}
+import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.util.ByteString
 import com.karasiq.fileutils.PathUtils._
 import com.karasiq.proxy.server.{ProxyConnectionRequest, ProxyServer}
@@ -55,8 +56,8 @@ object Boot extends App {
 
   val port = cfg.getInt("port")
   if (port != 0) {
-    Tcp().bind(host, port)
-      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer()).foreach {
+    Tcp().bind(host, port, options = List(SO.KeepAlive(true), SO.TcpNoDelay(true)), idleTimeout = 5 minutes)
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer().buffer(50, OverflowStrategy.backpressure)).foreach {
         case (request, connection) ⇒
           runViaChain(tcpConn, request, connection)
       })
@@ -64,8 +65,8 @@ object Boot extends App {
 
   val tlsPort = cfg.getInt("tls.port")
   if (tlsPort != 0) {
-    Tcp().bind(host, tlsPort)
-      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer.withTls(AppConfig.tlsContext(server = true))).foreach {
+    Tcp().bind(host, tlsPort, options = List(SO.KeepAlive(true), SO.TcpNoDelay(true)), idleTimeout = 5 minutes)
+      .runForeach(tcpConn ⇒ tcpConn.handleWith(ProxyServer.withTls(AppConfig.tlsContext(server = true)).buffer(50, OverflowStrategy.backpressure)).foreach {
         case (request, connection) ⇒
           runViaChain(tcpConn, request, connection)
       })
