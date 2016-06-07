@@ -52,8 +52,8 @@ private final class FirewallImpl(dnsAllowed: Boolean, allowedRanges: Seq[Subnet]
 
   @inline
   private def checkClient(client: InetSocketAddress): Boolean = {
-    val host = if (dnsAllowed) client.getHostName else client.getHostString
-    check[String](allowedClients, blockedClients, _ == host)
+    val addresses = Set(if (dnsAllowed) client.getHostName else client.getHostString, client.getAddress.getHostAddress)
+    check[String](allowedClients, blockedClients, addresses.contains)
   }
 
   override def connectionIsAllowed(clientAddress: InetSocketAddress, address: InetSocketAddress): Boolean = {
