@@ -39,7 +39,9 @@ object Boot extends App {
 
   // Start server
   val connector = Connector(appConfig)
+  val log = Logging(actorSystem, "ProxyServer")
   def runViaChain(tcpConn: IncomingConnection, request: ProxyConnectionRequest, connection: Flow[ByteString, ByteString, _]): Unit = {
+    log.info("{} connection request: {}", request.scheme.toUpperCase, request.address)
     connector.connect(request, tcpConn.remoteAddress)
       .onComplete {
         case Success((outConn, proxy)) ⇒
