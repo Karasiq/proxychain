@@ -1,27 +1,28 @@
 package com.karasiq.proxychain.app
 
-import akka.actor.ActorSystem
-import akka.event.Logging
-import akka.io.Tcp.SO
-import akka.stream.scaladsl.Tcp.IncomingConnection
-import akka.stream.scaladsl.{Flow, Sink, Source, Tcp}
-import akka.stream.{ActorMaterializer, OverflowStrategy}
-import akka.util.ByteString
-import com.karasiq.fileutils.PathUtils._
-import com.karasiq.proxy.server.{ProxyConnectionRequest, ProxyServer}
-import com.karasiq.proxychain.AppConfig
-import com.karasiq.proxychain.script.ScriptEngine
-import com.typesafe.config.Config
-
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
+import akka.actor.ActorSystem
+import akka.event.Logging
+import akka.io.Tcp.SO
+import akka.stream.{ActorMaterializer, OverflowStrategy}
+import akka.stream.scaladsl.{Flow, Sink, Source, Tcp}
+import akka.stream.scaladsl.Tcp.IncomingConnection
+import akka.util.ByteString
+import com.typesafe.config.Config
+
+import com.karasiq.fileutils.PathUtils._
+import com.karasiq.proxy.server.{ProxyConnectionRequest, ProxyServer}
+import com.karasiq.proxychain.AppConfig
+import com.karasiq.proxychain.script.ScriptEngine
+
 object Boot extends App {
   val rootConfig: Config = AppConfig.externalConfig()
-  implicit val actorSystem: ActorSystem = ActorSystem("ProxyChain", rootConfig.resolve())
-  implicit val actorMaterializer = ActorMaterializer()
+  implicit val actorSystem = ActorSystem("ProxyChain", rootConfig.resolve())
+  implicit val materializer = ActorMaterializer()
   import actorSystem.dispatcher
 
   val cfg = rootConfig.getConfig("proxyChain")
@@ -40,11 +41,12 @@ object Boot extends App {
   // Start server
   val connector = Connector(appConfig)
   val log = Logging(actorSystem, "ProxyServer")
+
   def runViaChain(tcpConn: IncomingConnection, request: ProxyConnectionRequest, connection: Flow[ByteString, ByteString, _]): Unit = {
     log.info("{} connection request: {}", request.scheme.toUpperCase, request.address)
     connector.connect(request, tcpConn.remoteAddress)
       .onComplete {
-        case Success((outConn, proxy)) ⇒
+        case Success((_, proxy)) ⇒
           ProxyServer.withSuccess(connection, request)
             .join(proxy)
             .run()

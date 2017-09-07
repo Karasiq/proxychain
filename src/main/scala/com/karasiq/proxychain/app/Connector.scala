@@ -2,31 +2,38 @@ package com.karasiq.proxychain.app
 
 import java.net.InetSocketAddress
 
-import akka.actor.ActorSystem
-import akka.event.Logging
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Tcp.OutgoingConnection
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.util.ByteString
-import akka.{Done, NotUsed}
-import com.karasiq.proxy.server.ProxyConnectionRequest
-import com.karasiq.proxy.{ProxyChain, ProxyException}
-import com.karasiq.proxychain.AppConfig
-
-import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 
+import akka.{Done, NotUsed}
+import akka.actor.ActorSystem
+import akka.event.Logging
+import akka.stream.Materializer
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.stream.scaladsl.Tcp.OutgoingConnection
+import akka.util.ByteString
+
+import com.karasiq.proxy.{ProxyChain, ProxyException}
+import com.karasiq.proxy.server.ProxyConnectionRequest
+import com.karasiq.proxychain.AppConfig
+
 private [app] object Connector {
-  def apply(cfg: AppConfig)(implicit as: ActorSystem, am: ActorMaterializer) = new Connector(cfg)
+  def apply(cfg: AppConfig)(implicit as: ActorSystem, am: Materializer) = {
+    new Connector(cfg)
+  }
 }
 
-private[app] class Connector(cfg: AppConfig)(implicit actorSystem: ActorSystem, actorMaterializer: ActorMaterializer) {
+private[app] class Connector(cfg: AppConfig)(implicit actorSystem: ActorSystem, materializer: Materializer) {
   import actorSystem.dispatcher
-  private val log = Logging(actorSystem, "Proxy")
+  private[this] val log = Logging(actorSystem, "Proxy")
 
   def connect(request: ProxyConnectionRequest, clientAddress: InetSocketAddress): Future[(OutgoingConnection, Flow[ByteString, ByteString, NotUsed])] = {
+    if (!cfg.firewall.connectionIsAllowed(clientAddress, request.address)) {
+      return Future.failed(new ProxyException("Connection rejected"))
+    }
+
     val chains = cfg.proxyChainsFor(request.address)
     log.debug("Trying connect to {} through chains: {}", request.address, chains)
 

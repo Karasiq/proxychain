@@ -1,21 +1,22 @@
 package com.karasiq.proxychain
 
+import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import java.net.InetSocketAddress
 import java.security.{KeyStore, SecureRandom}
-import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
 import akka.stream.TLSClientAuth
+import com.typesafe.config.{Config, ConfigFactory}
+
 import com.karasiq.fileutils.PathUtils._
 import com.karasiq.networkutils.proxy.Proxy
 import com.karasiq.proxy.ProxyChain
 import com.karasiq.tls.TLSKeyStore
 import com.karasiq.tls.x509.TrustStore
-import com.typesafe.config.{Config, ConfigFactory}
 
 object AppConfig {
   def apply(cfg: Config): AppConfig = new AppConfig {
-    override def firewall(): Firewall = Firewall(cfg)
+    override val firewall: Firewall = Firewall(cfg)
 
     override def proxyChainsFor(address: InetSocketAddress): Seq[Seq[Proxy]] = {
       val maxChains: Int = cfg.getInt("maxTriedChains")
@@ -64,6 +65,6 @@ object AppConfig {
 }
 
 trait AppConfig {
-  def firewall(): Firewall
+  def firewall: Firewall
   def proxyChainsFor(address: InetSocketAddress): Seq[Seq[Proxy]]
 }
