@@ -1,4 +1,4 @@
-# Proxychain [![Version](http://img.shields.io/badge/version-2.0.3-blue.svg?style=flat)](https://github.com/Karasiq/proxychain/releases) [![Dependencies](https://app.updateimpact.com/badge/692686982173822976/proxychain.svg?config=compile)](https://app.updateimpact.com/latest/692686982173822976/proxychain)
+# Proxychain [![Version](http://img.shields.io/badge/version-2.0.5-blue.svg?style=flat)](https://github.com/Karasiq/proxychain/releases) [![Dependencies](https://app.updateimpact.com/badge/692686982173822976/proxychain.svg?config=compile)](https://app.updateimpact.com/latest/692686982173822976/proxychain)
 Proxy-chaining SOCKS/HTTP server (see also [proxyutils library](https://github.com/Karasiq/proxyutils))
 
 # Configuration
