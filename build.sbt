@@ -2,7 +2,7 @@ name := "proxychain"
 
 organization := "com.github.karasiq"
 
-version := "2.0.5"
+version := "2.0.6-SNAPSHOT"
 
 isSnapshot := version.value.endsWith("SNAPSHOT")
 
@@ -10,7 +10,7 @@ scalaVersion := "2.11.11"
 
 resolvers += "softprops-maven" at "http://dl.bintray.com/content/softprops/maven"
 
-resolvers += Resolver.sonatypeRepo("snapshots")
+// resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies ++= {
   val akkaV = "2.5.4"
@@ -24,7 +24,7 @@ libraryDependencies ++= {
     "org.bouncycastle" % "bcprov-jdk15on" % "1.58",
     "org.bouncycastle" % "bcpkix-jdk15on" % "1.58",
     "com.github.karasiq" %% "cryptoutils" % "1.4.2",
-    "com.github.karasiq" %% "proxyutils" % "2.0.9",
+    "com.github.karasiq" %% "proxyutils" % "2.0.10",
     "com.github.karasiq" %% "coffeescript" % "1.0.2"
   )
 }
