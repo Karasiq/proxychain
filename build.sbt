@@ -2,7 +2,7 @@ name := "proxychain"
 
 organization := "com.github.karasiq"
 
-version := "2.0.6-SNAPSHOT"
+version := "2.0.6"
 
 isSnapshot := version.value.endsWith("SNAPSHOT")
 
