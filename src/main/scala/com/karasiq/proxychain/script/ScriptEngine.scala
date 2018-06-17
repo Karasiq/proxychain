@@ -10,7 +10,6 @@ import scala.language.dynamics
 import scala.util.control.Exception
 
 import akka.event.LoggingAdapter
-import org.apache.commons.io.IOUtils
 
 import com.karasiq.fileutils.PathUtils._
 import com.karasiq.networkutils.proxy.Proxy
@@ -46,7 +45,7 @@ class ScriptEngine(log: LoggingAdapter) {
     require(Files.isRegularFile(file), "Not a file: " + file)
     
     val reader = new InputStreamReader(file.inputStream(), Charset.forName("UTF-8"))
-    Exception.allCatch.andFinally(IOUtils.closeQuietly(reader)) {
+    Exception.allCatch.andFinally(reader.close()) {
       // Execute script
       scriptEngine.eval(reader)
     }
@@ -65,7 +64,7 @@ class ScriptEngine(log: LoggingAdapter) {
       }
 
       override def proxyChainsFor(address: InetSocketAddress): Seq[Seq[Proxy]] = {
-        invoker.proxyChainsFor(address) match {
+        (invoker.proxyChainsFor(address): AnyRef) match {
           case Conversions.ScalaSeq(chains @ _*) ⇒
             chains.collect {
               case Conversions.ScalaSeq(proxies @ _*) ⇒

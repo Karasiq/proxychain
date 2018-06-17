@@ -4,6 +4,7 @@ lazy val projectSettings = Seq(
   organization := "com.github.karasiq",
   isSnapshot := version.value.endsWith("SNAPSHOT"),
   scalaVersion := "2.12.6",
+  scalacOptions ++= Seq("-target:jvm-1.8"),
   resolvers += "softprops-maven" at "http://dl.bintray.com/content/softprops/maven",
   // resolvers += Resolver.sonatypeRepo("snapshots"),
   libraryDependencies ++= {
@@ -42,15 +43,15 @@ lazy val releaseSettings = Seq(
       // publishArtifacts,
       releaseStepTask(packageBin in Universal),
       releaseStepTask(stage),
-      CustomReleaseSteps.compileISSPackage
+      InnoSetupReleaseSteps.compileISPackage,
       // releaseStepCommand("sonatypeRelease"),
-      // commitReleaseVersion,
-      // tagRelease,
-      // pushChanges,
-      // releaseStepInputTask(githubRelease),
-      // setNextVersion,
-      // commitNextVersion,
-      // pushChanges
+      commitReleaseVersion,
+      tagRelease,
+      pushChanges,
+      releaseStepInputTask(githubRelease),
+      setNextVersion,
+      commitNextVersion,
+      pushChanges
     )
   }
 )

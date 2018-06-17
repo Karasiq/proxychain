@@ -1,14 +1,14 @@
 package com.karasiq.proxychain.script
 
-import java.io.{IOException, InputStream}
+import java.io.{InputStream, IOException}
 import java.net.URL
-
-import com.karasiq.fileutils.PathUtils._
-import jdk.nashorn.internal.objects.NativeArray
-import org.apache.commons.io.IOUtils
 
 import scala.io.Source
 import scala.util.control.Exception
+
+import jdk.nashorn.internal.objects.NativeArray
+
+import com.karasiq.fileutils.PathUtils._
 
 /**
  * File/URL loader
@@ -24,10 +24,10 @@ private[script] object ProxySource {
    * @return JS strings array
    */
   private def asStringArray(inputStream: InputStream, encoding: String): NativeArray = {
-    Exception.allCatch.andFinally(IOUtils.closeQuietly(inputStream)) {
+    try {
       val source = Source.fromInputStream(inputStream, encoding)
       Conversions.asJsArray(source.getLines().filter(_.length > 0).toVector)
-    }
+    } finally inputStream.close()
   }
 
   private def urlAsInputStream(url: String): InputStream = {
