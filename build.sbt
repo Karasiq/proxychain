@@ -19,7 +19,7 @@ lazy val projectSettings = Seq(
       "org.bouncycastle" % "bcprov-jdk15on" % "1.58",
       "org.bouncycastle" % "bcpkix-jdk15on" % "1.58",
       "com.github.karasiq" %% "cryptoutils" % "1.4.3",
-      "com.github.karasiq" %% "proxyutils" % "2.0.12",
+      "com.github.karasiq" %% "proxyutils" % "2.0.13",
       "com.github.karasiq" %% "coffeescript" % "1.0.2"
     )
   },
